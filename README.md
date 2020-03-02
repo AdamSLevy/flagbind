@@ -1,6 +1,8 @@
 # `package flagbinder`
 
 [![GoDoc](https://godoc.org/github.com/AdamSLevy/flagbinder?status.svg)](https://godoc.org/github.com/AdamSLevy/flagbinder)
+[![Build Status](https://travis-ci.org/AdamSLevy/flagbinder.svg?branch=master)](https://travis-ci.org/AdamSLevy/flagbinder)
+[![Coverage Status](https://coveralls.io/repos/github/AdamSLevy/flagbinder/badge.svg?branch=master)](https://coveralls.io/github/AdamSLevy/flagbinder?branch=master)
 
 Package flagbinder parses the exported fields of a struct and binds them to
 flags in a `flag.FlagSet` or `pflag.FlagSet`.
