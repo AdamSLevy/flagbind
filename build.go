@@ -2,31 +2,14 @@ package flagbuilder
 
 import (
 	"flag"
-	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
-	"unicode"
+
+	"github.com/spf13/pflag"
 )
 
-var ErrorInvalidType = fmt.Errorf("v must be a pointer to a struct")
-
-type ErrorDefaultValue struct {
-	FieldName string
-	Value     string
-	Err       error
-}
-
-func (err ErrorDefaultValue) Error() string {
-	return fmt.Sprintf("%v: cannot assign default value %q: %v",
-		err.FieldName, err.Value, err.Err)
-}
-func (err ErrorDefaultValue) Unwrap() error {
-	return err.Err
-}
-
-func Build(flg FlagSet, v interface{}) error {
+func Bind(flg FlagSet, v interface{}) error {
 	ptr := reflect.ValueOf(v)
 	if ptr.Kind() != reflect.Ptr {
 		return ErrorInvalidType
@@ -146,67 +129,18 @@ func Build(flg FlagSet, v interface{}) error {
 						fieldT.Name, tag.Value, err}
 				}
 			}
-			flg.Var(p, tag.Name, tag.Usage)
+			switch flg := flg.(type) {
+			case STDFlagSet:
+				flg.Var(p, tag.Name, tag.Usage)
+			case PFlagSet:
+				pp, ok := p.(pflag.Value)
+				if !ok {
+					pp = pflagValue{p, fieldT.Type.Name()}
+				}
+				flg.Var(pp, tag.Name, tag.Usage)
+			}
 		}
 	}
 
 	return nil
-}
-
-type FlagSet interface {
-	BoolVar(p *bool, name string, value bool, usage string)
-	DurationVar(p *time.Duration, name string, value time.Duration, usage string)
-	Float64Var(p *float64, name string, value float64, usage string)
-	Int64Var(p *int64, name string, value int64, usage string)
-	IntVar(p *int, name string, value int, usage string)
-	StringVar(p *string, name string, value string, usage string)
-	Uint64Var(p *uint64, name string, value uint64, usage string)
-	UintVar(p *uint, name string, value uint, usage string)
-	Var(value flag.Value, name string, usage string)
-}
-
-type _ struct {
-	X int `flag:"-X;"`
-}
-type flagTag struct {
-	Name  string
-	Value string
-	Usage string
-
-	Ignored bool
-}
-
-func newFlagTag(tag string) (fTag flagTag) {
-	if len(tag) == 0 {
-		return
-	}
-	args := strings.Split(tag, ";")
-	fTag.Ignored = args[0] == "-" // Ignore this field
-	if fTag.Ignored {
-		return
-	}
-	fTag.Name = strings.TrimLeft(args[0], "-")
-	if len(args) == 1 {
-		return
-	}
-	fTag.Value = args[1]
-	if len(args) == 2 {
-		return
-	}
-	fTag.Usage = args[2]
-	return
-}
-
-func kebabCase(name string) string {
-	var kebab string
-	for _, r := range name {
-		if unicode.IsUpper(r) {
-			if len(kebab) > 0 {
-				kebab += "-"
-			}
-			r = unicode.ToLower(r)
-		}
-		kebab += string(r)
-	}
-	return kebab
 }
