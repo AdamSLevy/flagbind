@@ -19,9 +19,8 @@ flags := struct {
         // Flag names default to `auto-kebab-case`
         AutoKebabCase int
 
-        // If pflag is used, -s will be used as the shorthand flag
-        // name, otherwise it is ignored for use with the standard flag
-        // package.
+        // If pflag is used, -s is be used as the shorthand flag name,
+        // otherwise it is ignored for use with the standard flag package.
         ShortName bool `flag:"short,s"`
 
         // Nested and Embedded structs can add a flag name prefix, or not.

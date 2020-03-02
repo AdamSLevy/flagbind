@@ -54,8 +54,8 @@ type Flags struct {
 	// The default name for this flag is `auto-kebab`.
 	AutoKebab bool
 
-	// When using pflag this will be named --short and -s.
-	// When using flag, this will just be named -s.
+	// When using pflag this is named --short and -s.
+	// When using flag, this is just be named -s.
 	Short bool `flag:"s"`
 
 	// Order doesn't matter for short flags, only length.
@@ -63,18 +63,19 @@ type Flags struct {
 	LongShort bool `flag:"long,l"`
 	ShortLong bool `flag:"r,-rlong"`
 
-	// When using pflag, this flag will be hidden from the usage.
+	// When using pflag, this flag is hidden from the usage.
 	Hidden bool `flag:";;Hidden usage;hidden"`
 
-	// The default value of this flag will be hidden from the usage.
+	// The default value of this flag is hidden from the usage.
 	HideDefault string `flag:";default value;Hide default;hide-default"`
 
-	// These pointers will be allocated by Bind if they are nil.
+	// These pointers are allocated by Bind if they are nil.
 	Ptr *bool
-	// This will be allocated and set to true.
+	// This is allocated, if not nil, and set to true, if not zero, by
+	// Bind.
 	PtrDefault *bool `flag:";true"`
 
-	// Set <name> and <usage> but not <default>
+	// Set <name> and <usage> but not <default>.
 	Bool    bool    `flag:"bool;;Set the Bool true."`
 	Int     int     `flag:";0"`
 	Int64   int64   `flag:";0"`
@@ -82,7 +83,7 @@ type Flags struct {
 	Uint64  uint64  `flag:";0"`
 	Float64 float64 `flag:";0"`
 
-	// <default> will be 1*time.Hour
+	// The <default> is 1*time.Hour.
 	Duration     time.Duration `flag:";1h"`
 	String       string
 	Value        TestValue

@@ -32,9 +32,8 @@
 //		// Flag names default to `auto-kebab-case`
 //		AutoKebabCase int
 //
-//		// If pflag is used, -s will be used as the shorthand flag
-//		// name, otherwise it is ignored for use with the standard flag
-//		// package.
+//              // If pflag is used, -s is be used as the shorthand flag name,
+//              // otherwise it is ignored for use with the standard flag package.
 //		ShortName bool `flag:"short,s"`
 //
 //		// Nested and Embedded structs can add a flag name prefix, or not.
@@ -84,14 +83,21 @@ import (
 //
 // Bind returns ErrorInvalidType if v is not a pointer to a struct.
 //
-// For each field of v, Bind attempts to bind a new flag in flg, if it is a
+// For each field of v, Bind attempts to bind a new flag in flg if it is a
 // supported type, or a pointer to a supported type. If the field is a nil
-// pointer, it will be initialized. See FlagSet for a list of supported types.
+// pointer, it is initialized. See FlagSet for a list of supported types.
 //
-// If v contains nested structs, their fields will also be parsed using the
-// same rules. Bind will panic if duplicate a flag name occurs. So the names of
-// the nested struct fields are prepended with the name of the nested struct,
-// or its type if its embedded using kebab case.
+// Bind panics if a duplicate flag name occurs.
+//
+// If v contains nested or embedded structs, their fields are parsed
+// recursively. By default the names of nested struct fields are prepended with
+// the name(s) of their parent(s) to help avoid flag name collisions. The
+// prefix can be omitted for a nested struct with the `flatten` <option>. See
+// Flag Settings below.
+//
+// By default, the flag names of embedded embedded struct fields are treated as
+// if they are part of the top level struct. However, an explicit flag name may
+// be given to an embedded struct to unflatten its fields like a nested struct.
 //
 //
 // Flag Settings
@@ -108,7 +114,7 @@ import (
 // <name> - The name of the flag. All leading dashes are trimmed. If empty, the
 // flag name defaults to the "kebab case" of the field name. For example,
 // `ThisFieldName` would have the default flag name `this-field-name`. If the
-// field is a nested or embedded struct, this will override the prefix of its
+// field is a nested or embedded struct, this overrides the prefix on its
 // fields.
 //
 //
@@ -118,31 +124,31 @@ import (
 // be one character long, excluding leading dashes.
 //
 //
-// <default> - If the current value of the field is zero, and if this is not
-// empty, Bind will attempt to parse the string into the field type as the
-// default, just like it would be parsed as a flag. In other words, non-zero
-// field values take precendence over the tag's <default>.
+// <default> - If the current value of the field is zero, Bind attempts to
+// parse this as the field's default, just like it would be parsed as a flag.
+// Non-zero field values override this as the default.
 //
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
-// will be empty.
+// is empty unless specified.
 //
 //
 // <options> - A comma separated list of additional options for the flag.
-//      hide-default - Don't print the default value of this flag in the usage
+//
+//      hide-default - Do not print the default value of this flag in the usage
 //      output.
 //
-//      hidden - (PFlagSet only) Don't show this flag in the usage output.
+//      hidden - (PFlagSet only) Do not show this flag in the usage output.
 //
-//      flatten - (Nested structs only) Does not prefix the name of a nested
-//      struct to the names of its fields.
+//      flatten - (Nested/embedded structs only) Do not prefix the name of the
+//      struct to the names of its fields. This overrides the explicit name on
+//      an embedded struct which would otherwise unflatten it.
 //
 //
 // Ignoring a Field
 //
 // Use the tag `flag:"-"` to prevent a field from being bound to any flag. If
-// the field is a nested or embedded struct then its fields will also be
-// ignored.
+// the field is a nested or embedded struct then its fields are also ignored.
 //
 //
 // Adapt flag.Value To pflag.Value When flg Implements PFlagSet
