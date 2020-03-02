@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-package flagbinder_test
+package flagbind_test
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AdamSLevy/flagbinder"
+	"github.com/AdamSLevy/flagbind"
 	"github.com/spf13/pflag"
 )
 
@@ -124,7 +124,7 @@ func ExampleBind() {
 	// Set some defaults
 	f := Flags{String: "inherit this default"}
 	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-	if err := flagbinder.Bind(fs, &f); err != nil {
+	if err := flagbind.Bind(fs, &f); err != nil {
 		log.Fatal(err)
 	}
 

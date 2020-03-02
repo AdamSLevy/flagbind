@@ -1,10 +1,10 @@
-# `package flagbinder`
+# `package flagbind`
 
-[![GoDoc](https://godoc.org/github.com/AdamSLevy/flagbinder?status.svg)](https://godoc.org/github.com/AdamSLevy/flagbinder)
-[![Build Status](https://travis-ci.org/AdamSLevy/flagbinder.svg?branch=master)](https://travis-ci.org/AdamSLevy/flagbinder)
-[![Coverage Status](https://coveralls.io/repos/github/AdamSLevy/flagbinder/badge.svg?branch=master)](https://coveralls.io/github/AdamSLevy/flagbinder?branch=master)
+[![GoDoc](https://godoc.org/github.com/AdamSLevy/flagbind?status.svg)](https://godoc.org/github.com/AdamSLevy/flagbind)
+[![Build Status](https://travis-ci.org/AdamSLevy/flagbind.svg?branch=master)](https://travis-ci.org/AdamSLevy/flagbind)
+[![Coverage Status](https://coveralls.io/repos/github/AdamSLevy/flagbind/badge.svg?branch=master)](https://coveralls.io/github/AdamSLevy/flagbind?branch=master)
 
-Package flagbinder parses the exported fields of a struct and binds them to
+Package flagbind parses the exported fields of a struct and binds them to
 flags in a `flag.FlagSet` or `pflag.FlagSet`.
 
 `Bind` allows for creating flags declaratively right alongside the definition
@@ -39,7 +39,7 @@ flags := struct {
 }
 
 fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-flagbinder.Bind(fs, &flags)
+flagbind.Bind(fs, &flags)
 fs.Parse([]string{"--auto-kebab-case"})
 ```
 

@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-// Package flagbinder parses the exported fields of a struct and binds them to
+// Package flagbind parses the exported fields of a struct and binds them to
 // flags in a flag.FlagSet or pflag.FlagSet.
 //
 // Bind allows for creating flags declaratively right alongside the definition
@@ -52,7 +52,7 @@
 //	}
 //
 //	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-//	flagbinder.Bind(fs, &flags)
+//	flagbind.Bind(fs, &flags)
 //	fs.Parse([]string{"--auto-kebab-case"})
 //
 // Bind works seemlessly with both the standard library flag package and the
@@ -64,7 +64,7 @@
 //
 // Additional options may be set for each flag. See Bind for the full
 // documentation details.
-package flagbinder
+package flagbind
 
 import (
 	"flag"
