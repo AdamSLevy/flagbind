@@ -25,30 +25,35 @@
 // of their containing struct. For example, the following stuct could be passed
 // to Bind to populate a flag.FlagSet or pflag.FlagSet.
 //
-//      flags := type struct {
-//              StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
-//              Int        int `flag:"integer;5;Usage for string-flag"`
+//	flags := struct {
+//		StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
+//		Int        int    `flag:"integer;5"`
 //
-//              // Flag names default to `auto-kebab-case`
-//              AutoKebabCase int
+//		// Flag names default to `auto-kebab-case`
+//		AutoKebabCase int
 //
-//              // If pflag is used, -s will be used as the shorthand flag
-//              // name, otherwise it is ignored for use with the standard flag
-//              // package.
-//              ShortName bool `flag:"short,s"`
+//		// If pflag is used, -s will be used as the shorthand flag
+//		// name, otherwise it is ignored for use with the standard flag
+//		// package.
+//		ShortName bool `flag:"short,s"`
 //
-//              // Ignored by Bind
-//              ExplicitlyIgnored bool `flag:"-"`
-//              unexported        bool
-//      }{
-//              // Default values may also be set directly if not already
-//              // specified.
-//              ShortName: true,
-//      }
+//		// Nested and Embedded structs can add a flag name prefix, or not.
+//		Nested     StructA
+//		NestedFlat StructB           `flag:";;;flatten"`
+//		StructA                      // Flat by default
+//		StructB    `flag:"embedded"` // Add prefix to nested field flag names.
 //
-//      fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-//      flagbinder.Bind(fs, &flags)
-//      fs.Parse([]string{"--auto-kebab-case"})
+//		// Ignored
+//		ExplicitlyIgnored bool `flag:"-"`
+//		unexported        bool
+//	}{
+//		// Default values may also be set directly to override the tag.
+//		ShortName: true,
+//	}
+//
+//	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
+//	flagbinder.Bind(fs, &flags)
+//	fs.Parse([]string{"--auto-kebab-case"})
 //
 // Bind works seemlessly with both the standard library flag package and the
 // popular pflag package.
