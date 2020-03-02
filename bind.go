@@ -48,7 +48,7 @@
 //		unexported        bool
 //	}{
 //		// Default values may also be set directly to override the tag.
-//		ShortName: true,
+//		StringFlag: "override default",
 //	}
 //
 //	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
