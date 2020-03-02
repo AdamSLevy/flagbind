@@ -29,6 +29,23 @@ var ErrorInvalidType = fmt.Errorf("v must be a pointer to a struct")
 // STDFlagSet or PFlagSet.
 var ErrorInvalidFlagSet = fmt.Errorf("flg must implement STDFlagSet or PFlagSet")
 
+// ErrorNestedStruct is returned from Bind if a recursive call to bind on a
+// nested struct returns an error.
+type ErrorNestedStruct struct {
+	FieldName string
+	Err       error
+}
+
+// Error implements error.
+func (err ErrorNestedStruct) Error() string {
+	return fmt.Sprintf("%v: %v", err.FieldName, err.Err)
+}
+
+// Unwrap implements unwrap.
+func (err ErrorNestedStruct) Unwrap() error {
+	return err.Err
+}
+
 // ErrorDefaultValue is returned from Bind if the <default> value given in the
 // tag cannot be parsed and assigned to the field.
 type ErrorDefaultValue struct {

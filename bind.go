@@ -41,9 +41,9 @@
 //              ExplicitlyIgnored bool `flag:"-"`
 //              unexported        bool
 //      }{
-//              // Default values may also be set directly if not alread
+//              // Default values may also be set directly if not already
 //              // specified.
-//              ShortName: true
+//              ShortName: true,
 //      }
 //
 //      fs := pflag.NewFlagSet("", pflag.ContinueOnError)
@@ -51,14 +51,22 @@
 //      fs.Parse([]string{"--auto-kebab-case"})
 //
 // Bind works seemlessly with both the standard library flag package and the
-// popular pflag package. Additional options may be set for each flag. See Bind
-// for the full documentation.
+// popular pflag package.
+//
+// For types that only implement flag.Value, Bind wraps them in an adapter so
+// that they can be used as a pflag.Value. The return value of the added
+// function Type() string is the type name of the struct field.
+//
+// Additional options may be set for each flag. See Bind for the full
+// documentation details.
 package flagbinder
 
 import (
 	"flag"
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -75,6 +83,12 @@ import (
 // supported type, or a pointer to a supported type. If the field is a nil
 // pointer, it will be initialized. See FlagSet for a list of supported types.
 //
+// If v contains nested structs, their fields will also be parsed using the
+// same rules. Bind will panic if duplicate a flag name occurs. So the names of
+// the nested struct fields are prepended with the name of the nested struct,
+// or its type if its embedded using kebab case.
+//
+//
 // Flag Settings
 //
 // The settings for a particular flag can be customized using a struct field
@@ -85,22 +99,29 @@ import (
 // The tag is optional and not all values need to be provided. Semi-colons only
 // must be added to distinguish subsequent values if earlier ones are omitted.
 //
+//
 // <name> - The name of the flag. All leading dashes are trimmed. If empty, the
 // flag name defaults to the "kebab case" of the field name. For example,
-// `ThisFieldName` would have the default flag name `this-field-name`.
+// `ThisFieldName` would have the default flag name `this-field-name`. If the
+// field is a nested or embedded struct, this will override the prefix of its
+// fields.
+//
 //
 // <short> - If flg does not implement PFlagSet, this is ignored. Otherwise, an
 // optional short name may also be provided with the <name>, separated by a
 // comma. The order of <name> and <short> does not matter, but <short> may only
 // be one character long, excluding leading dashes.
 //
+//
 // <default> - If the current value of the field is zero, and if this is not
-// empty, Bind will attempt to parse the string into the member field type as
-// the default, just like it would be parsed as a flag. In other words,
-// non-zero field values take precendence over the tag's <default>.
+// empty, Bind will attempt to parse the string into the field type as the
+// default, just like it would be parsed as a flag. In other words, non-zero
+// field values take precendence over the tag's <default>.
+//
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
 // will be empty.
+//
 //
 // <options> - A comma separated list of additional options for the flag.
 //      hide-default - Don't print the default value of this flag in the usage
@@ -108,11 +129,18 @@ import (
 //
 //      hidden - (PFlagSet only) Don't show this flag in the usage output.
 //
+//      flatten - (Nested structs only) Does not prefix the name of a nested
+//      struct to the names of its fields.
+//
+//
 // Ignoring a Field
 //
-// Use the tag `flag:"-"` to prevent a field from being bound to any flag.
+// Use the tag `flag:"-"` to prevent a field from being bound to any flag. If
+// the field is a nested or embedded struct then its fields will also be
+// ignored.
 //
-// Adapt flag.Value to pflag.Value when flg implements PFlagSet
+//
+// Adapt flag.Value To pflag.Value When flg Implements PFlagSet
 //
 // The pflag.Value interface is the flag.Value interface, but with an
 // additional Type() string function. This means that flag.Value cannot be used
@@ -124,6 +152,10 @@ import (
 // need to implement flag.Value. If the field does implement pflag.Value, it is
 // used directly.
 func Bind(flg FlagSet, v interface{}) error {
+	return bind(flg, v, "")
+}
+
+func bind(flg FlagSet, v interface{}, prefix string) error {
 	ptr := reflect.ValueOf(v)
 	if ptr.Kind() != reflect.Ptr {
 		return ErrorInvalidType
@@ -131,6 +163,12 @@ func Bind(flg FlagSet, v interface{}) error {
 	val := reflect.Indirect(ptr)
 	if val.Kind() != reflect.Struct {
 		return ErrorInvalidType
+	}
+
+	stdflg, useSTDFlag := flg.(STDFlagSet)
+	pflg, usePFlag := flg.(PFlagSet)
+	if !useSTDFlag && !usePFlag {
+		return ErrorInvalidFlagSet
 	}
 
 	valT := val.Type()
@@ -145,17 +183,12 @@ func Bind(flg FlagSet, v interface{}) error {
 		if tag.Ignored {
 			continue
 		}
-		stdflg, useSTDFlag := flg.(STDFlagSet)
-		pflg, usePFlag := flg.(PFlagSet)
-		if !useSTDFlag && !usePFlag {
-			return ErrorInvalidFlagSet
-		}
-		if tag.Name == "" ||
+		if !tag.ExplicitName ||
 			(usePFlag && tag.Name == tag.ShortName) {
 			// No explicit name given
 			// OR
 			// We are using pflag and the long name is the same as
-			// the short name, which is disallowed
+			// the short name, which is disallowed.
 			tag.Name = kebabCase(fieldT.Name)
 		}
 
@@ -171,6 +204,23 @@ func Bind(flg FlagSet, v interface{}) error {
 		} else {
 			// We have a pre-allocated pointer.
 			isZero = fieldV.Elem().IsZero()
+		}
+
+		if fieldT.Type.Kind() == reflect.Struct {
+			prefix := prefix
+			if !tag.Flatten &&
+				(!fieldT.Anonymous || tag.ExplicitName) {
+				prefix = strings.Trim(
+					fmt.Sprintf("%v-%v", prefix, tag.Name), "-")
+			}
+			if err := bind(flg, fieldV.Interface(), prefix); err != nil {
+				return ErrorNestedStruct{fieldT.Name, err}
+			}
+			continue
+		}
+
+		if prefix != "" {
+			tag.Name = fmt.Sprintf("%v-%v", prefix, tag.Name)
 		}
 
 		var err error

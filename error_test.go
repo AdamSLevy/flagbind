@@ -32,3 +32,7 @@ func TestErrorDefaultValueUnwrap(t *testing.T) {
 	err := ErrorDefaultValue{"", "", strconv.ErrSyntax}
 	assert.True(t, errors.Is(err, strconv.ErrSyntax))
 }
+func TestErrorNestedStructUnwrap(t *testing.T) {
+	err := ErrorNestedStruct{"", strconv.ErrSyntax}
+	assert.True(t, errors.Is(err, strconv.ErrSyntax))
+}

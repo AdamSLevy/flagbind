@@ -86,7 +86,21 @@ type Flags struct {
 	Duration     time.Duration `flag:";1h"`
 	String       string
 	Value        TestValue
-	ValueDefault TestValue `flag:";true;"`
+	ValueDefault TestValue `flag:";true"`
+
+	// Nested and embedded structs are also parsed
+	Nested     StructA
+	NestedFlat StructB `flag:";;;flatten"`
+
+	StructA // embedded
+	StructB `flag:"embedded"`
+}
+
+type StructA struct {
+	StructABool bool
+}
+type StructB struct {
+	StructBBool bool
 }
 
 type TestValue bool
@@ -120,6 +134,10 @@ func ExampleBind() {
 		"-s",
 		"--duration", "1m",
 		"--auto-kebab",
+		"--nested-struct-a-bool",
+		"--struct-b-bool",
+		"--struct-a-bool",
+		"--embedded-struct-b-bool",
 	}); err != nil {
 		log.Fatal(err)
 	}

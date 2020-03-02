@@ -25,15 +25,18 @@ import (
 )
 
 type flagTag struct {
-	Name      string
-	ShortName string
-	Value     string
-	Usage     string
+	ExplicitName bool
+	Name         string
+	ShortName    string
+	Value        string
+	Usage        string
 
 	Ignored bool
 
 	HideDefault bool
 	Hidden      bool
+
+	Flatten bool
 }
 
 func newFlagTag(tag string) (fTag flagTag) {
@@ -73,6 +76,7 @@ func (fTag *flagTag) parseNames(name string) {
 		if len(fTag.Name) == 1 { // if Name is short, override ShortName
 			fTag.ShortName = fTag.Name
 		}
+		fTag.ExplicitName = fTag.Name != ""
 	}()
 	names := strings.Split(name, ",")
 	fTag.Name = strings.TrimLeft(names[0], "-")
@@ -87,4 +91,5 @@ func (fTag *flagTag) parseOptions(opts string) {
 	opts = strings.ToLower(opts)
 	fTag.Hidden = strings.Contains(opts, "hidden")
 	fTag.HideDefault = strings.Contains(opts, "hide-default")
+	fTag.Flatten = strings.Contains(opts, "flatten")
 }

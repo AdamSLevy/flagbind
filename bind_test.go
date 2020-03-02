@@ -152,6 +152,12 @@ type ValidTestFlags struct {
 	DefaultInheritOverride    int  `flag:";41"`
 	PtrDefaultInheritOverride *int `flag:";40"`
 
+	Nested     StructA
+	NestedFlat StructB `flag:";;;flatten"`
+
+	StructA // embedded
+	StructB `flag:"embedded"`
+
 	Bool         bool          `flag:";false"`
 	Int          int           `flag:";0"`
 	Int64        int64         `flag:";0"`
@@ -162,6 +168,13 @@ type ValidTestFlags struct {
 	String       string
 	Value        TestValue
 	ValueDefault TestValue `flag:";true;"`
+}
+
+type StructA struct {
+	StructABool bool
+}
+type StructB struct {
+	StructBBool bool
 }
 
 func TestBind(t *testing.T) {
@@ -208,6 +221,10 @@ var tests = []BindTest{
 			"-string", "string val",
 			"-value", "true",
 			"-rlong",
+			"-struct-a-bool",
+			"-struct-b-bool",
+			"-nested-struct-a-bool",
+			"-embedded-struct-b-bool",
 		},
 		ExpF: &ValidTestFlags{
 			Default:                   true,
@@ -233,6 +250,10 @@ var tests = []BindTest{
 			String:                    "string val",
 			Value:                     true,
 			ValueDefault:              true,
+			Nested:                    StructA{true},
+			NestedFlat:                StructB{true},
+			StructA:                   StructA{true},
+			StructB:                   StructB{true},
 		},
 	}, {
 		Name: "ignored",
@@ -260,6 +281,15 @@ var tests = []BindTest{
 		},
 		ErrParse:      "flag provided but not defined: -skip",
 		ErrPFlagParse: "unknown flag: --skip",
+	}, {
+		Name: "invalid nested struct",
+		F: &struct {
+			E struct {
+				Value TestValue `flag:";asdf;"`
+			}
+		}{},
+		ErrBind: ErrorNestedStruct{"E", ErrorDefaultValue{"Value", "asdf",
+			fmt.Errorf(`could not parse "asdf" as TestValue`)}}.Error(),
 	}, {
 		Name: "invalid default Value",
 		F: &struct {
