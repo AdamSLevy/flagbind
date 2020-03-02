@@ -1,4 +1,4 @@
-module github.com/AdamSLevy/flagbuilder
+module github.com/AdamSLevy/flagbinder
 
 go 1.14
 

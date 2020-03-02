@@ -1,4 +1,23 @@
-package flagbuilder
+// Copyright (c) 2020 Adam S Levy
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
+package flagbinder
 
 import (
 	"bytes"
@@ -17,32 +36,45 @@ import (
 type BindTest struct {
 	Name     string
 	UsePFlag bool
-	// This is the *struct{} to bind flags to.
-	F             interface{}
-	ErrBind       string
-	Usage         string
-	Args          []string
-	ExpF          interface{}
+
+	// F is the *struct{} to bind flags to.
+	F       interface{}
+	ErrBind string
+
+	// Usage must be contain all strings in UsageContains.
+	UsageContains []string
+
+	// Usage must not contain any strings in UsageNotContains.
+	UsageNotContains []string
+
+	ParseArgs []string
+
+	// ExpF is what we expect F to be populated to after Parse.
+	ExpF interface{}
+
+	// flag and pflag Parse return slightly different errors.
 	ErrParse      string
 	ErrPFlagParse string
 }
 
+// Run launches test with the appropriate test name.
 func (test *BindTest) Run(t *testing.T) {
 	t.Run(test.Name, test.test)
 	test.UsePFlag = true
 	t.Run(test.Name+" pflag", test.test)
 }
 
+// test runs a single test t.
 func (test *BindTest) test(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	var flg interface {
 		FlagSet
 		SetOutput(io.Writer)
-		Usage()
+		Usage() string
 		Parse([]string) error
 	}
-	args := test.Args
+	args := test.ParseArgs
 	if test.UsePFlag {
 		flg = pflagSetUsage{pflag.NewFlagSet("", pflag.ContinueOnError)}
 		args = append([]string{}, args...)
@@ -62,15 +94,19 @@ func (test *BindTest) test(t *testing.T) {
 	err := Bind(flg, test.F)
 
 	if test.ErrBind != "" {
-		assert.EqualError(err, test.ErrBind, "flagbuilder.Bind()")
+		assert.EqualError(err, test.ErrBind, "Bind()")
 		return
 	}
-	require.NoError(err, "flagbuilder.Bind()")
+	require.NoError(err, "Bind()")
 
-	if test.Usage != "" {
-		flg.Usage()
-		assert.Contains(string(usageOutput.Bytes()), test.Usage,
-			"flag.FlagSet.Usage()")
+	usage := flg.Usage()
+	for _, use := range test.UsageContains {
+		assert.Contains(usage, use, "flag.FlagSet.Usage()")
+	}
+	if test.UsePFlag {
+		for _, use := range test.UsageNotContains {
+			assert.NotContains(usage, use, "flag.FlagSet.Usage()")
+		}
 	}
 
 	err = flg.Parse(args)
@@ -92,6 +128,8 @@ func (test *BindTest) test(t *testing.T) {
 	assert.Equal(test.ExpF, test.F)
 }
 
+// ValidTestFlags is a test struct that exercises all ways to declare flag
+// tags.
 type ValidTestFlags struct {
 	skip           bool
 	Ignored        bool `flag:"-"`
@@ -102,10 +140,17 @@ type ValidTestFlags struct {
 	WithDash       bool `flag:"-with-dash"`
 	WithTwoDash    bool `flag:"--with-two-dash"`
 	AutoKebab      bool
+	Short          bool `flag:"s"`
+	LongShort      bool `flag:"long,l"`
+	ShortLong      bool `flag:"r,-rlong"`
 
-	Ptr               *bool
-	PtrDefault        *bool `flag:";true"`
-	PtrDefaultInherit *bool
+	Hidden      bool   `flag:";;Hidden usage;hidden"`
+	HideDefault string `flag:";default value;Hide default;hide-default"`
+
+	Ptr                       *bool
+	PtrDefault                *int `flag:";50"`
+	DefaultInheritOverride    int  `flag:";41"`
+	PtrDefaultInheritOverride *int `flag:";40"`
 
 	Bool         bool          `flag:";false"`
 	Int          int           `flag:";0"`
@@ -139,16 +184,21 @@ var tests = []BindTest{
 	}, {
 		Name: "valid",
 		F: &ValidTestFlags{
-			DefaultInherit:    true,
-			PtrDefaultInherit: func() *bool { b := true; return &b }(),
+			DefaultInherit:            true,
+			DefaultInheritOverride:    43,
+			PtrDefault:                func() *int { b := 55; return &b }(),
+			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
 		},
-		Usage: "Unique usage goes here",
-		Args: []string{
+		UsageContains:    []string{"Unique usage goes here"},
+		UsageNotContains: []string{"Hidden usage", "default value"},
+		ParseArgs: []string{
 			"-different-flag-name",
 			"-with-dash",
 			"-with-two-dash",
 			"-auto-kebab",
+			"-hidden",
 			"-bool",
+			"-s",
 			"-int", "4",
 			"-int64", "5",
 			"-uint", "6",
@@ -157,53 +207,56 @@ var tests = []BindTest{
 			"-duration", "1m",
 			"-string", "string val",
 			"-value", "true",
+			"-rlong",
 		},
 		ExpF: &ValidTestFlags{
-			Default:           true,
-			DefaultInherit:    true,
-			CustomName:        true,
-			WithDash:          true,
-			WithTwoDash:       true,
-			AutoKebab:         true,
-			Ptr:               func() *bool { b := false; return &b }(),
-			PtrDefault:        func() *bool { b := true; return &b }(),
-			PtrDefaultInherit: func() *bool { b := true; return &b }(),
-			Bool:              true,
-			Int:               4,
-			Int64:             5,
-			Uint:              6,
-			Uint64:            7,
-			Float64:           0.5,
-			Duration:          time.Minute,
-			String:            "string val",
-			Value:             true,
-			ValueDefault:      true,
+			Default:                   true,
+			DefaultInherit:            true,
+			CustomName:                true,
+			Hidden:                    true,
+			WithDash:                  true,
+			WithTwoDash:               true,
+			AutoKebab:                 true,
+			Short:                     true,
+			ShortLong:                 true,
+			Ptr:                       func() *bool { b := false; return &b }(),
+			PtrDefault:                func() *int { b := 55; return &b }(),
+			DefaultInheritOverride:    43,
+			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
+			Bool:                      true,
+			Int:                       4,
+			Int64:                     5,
+			Uint:                      6,
+			Uint64:                    7,
+			Float64:                   0.5,
+			Duration:                  time.Minute,
+			String:                    "string val",
+			Value:                     true,
+			ValueDefault:              true,
 		},
 	}, {
 		Name: "ignored",
 		F:    &ValidTestFlags{},
-		Args: []string{
+		ParseArgs: []string{
 			"-ignored",
 		},
 		ExpF: &ValidTestFlags{
-			Ignored:           false,
-			Default:           true,
-			PtrDefaultInherit: func() *bool { b := true; return &b }(),
-			PtrDefault:        func() *bool { b := true; return &b }(),
+			Ignored:    false,
+			Default:    true,
+			PtrDefault: func() *int { b := 50; return &b }(),
 		},
 		ErrParse:      "flag provided but not defined: -ignored",
 		ErrPFlagParse: "unknown flag: --ignored",
 	}, {
 		Name: "skip unexported",
 		F:    &ValidTestFlags{},
-		Args: []string{
+		ParseArgs: []string{
 			"-skip",
 		},
 		ExpF: &ValidTestFlags{
-			Ignored:           false,
-			Default:           true,
-			PtrDefaultInherit: func() *bool { b := true; return &b }(),
-			PtrDefault:        func() *bool { b := true; return &b }(),
+			Ignored:    false,
+			Default:    true,
+			PtrDefault: func() *int { b := 50; return &b }(),
 		},
 		ErrParse:      "flag provided but not defined: -skip",
 		ErrPFlagParse: "unknown flag: --skip",
