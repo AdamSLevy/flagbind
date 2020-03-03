@@ -24,12 +24,14 @@ import (
 	"strings"
 )
 
+// flagTag represents all possible tag settings.
 type flagTag struct {
 	ExplicitName bool
 	Name         string
 	ShortName    string
 	Value        string
 	Usage        string
+	UsageRef     bool
 
 	Ignored bool
 
@@ -39,12 +41,13 @@ type flagTag struct {
 	Flatten bool
 }
 
+// newFlagTag parses all possible tag settings.
 func newFlagTag(tag string) (fTag flagTag) {
 	if len(tag) == 0 {
 		return
 	}
 	args := strings.Split(tag, ";")
-	fTag.Ignored = args[0] == "-" // Ignore this field
+	fTag.Ignored = args[0] == "-"
 	if fTag.Ignored {
 		return
 	}
@@ -60,6 +63,7 @@ func newFlagTag(tag string) (fTag flagTag) {
 	}
 
 	fTag.Usage = args[2]
+	fTag.UsageRef = fTag.Usage == "_"
 	if len(args) == 3 {
 		return
 	}
@@ -68,13 +72,18 @@ func newFlagTag(tag string) (fTag flagTag) {
 	return
 }
 
+// parseNames parses and sorts long and short flag names
 func (fTag *flagTag) parseNames(name string) {
 	defer func() {
 		if len(fTag.Name) < len(fTag.ShortName) { // ensure Name is longer
 			fTag.Name, fTag.ShortName = fTag.ShortName, fTag.Name
 		}
-		if len(fTag.Name) == 1 { // if Name is short, override ShortName
+		if len(fTag.Name) == 1 {
+			// If Name qualifies as short, override ShortName.
 			fTag.ShortName = fTag.Name
+		} else if len(fTag.ShortName) > 1 {
+			// Short name is too long, so censor it.
+			fTag.ShortName = ""
 		}
 		fTag.ExplicitName = fTag.Name != ""
 	}()

@@ -112,7 +112,8 @@ func (test *BindTest) test(t *testing.T) {
 
 	if test.UsePFlag {
 		if test.ErrPFlagParse != "" {
-			assert.EqualError(err, test.ErrPFlagParse, "flag.FlagSet.Parse()")
+			assert.EqualError(err, test.ErrPFlagParse,
+				"flag.FlagSet.Parse()")
 			return
 		}
 
@@ -135,6 +136,8 @@ type ValidTestFlags struct {
 	DefaultInherit bool
 	Default        bool `flag:";true"`
 	Usage          bool `flag:";;Unique usage goes here"`
+	ExtendedUsage  bool `flag:";;_"`
+	_ExtendedUsage string
 	CustomName     bool `flag:"different-flag-name"`
 	WithDash       bool `flag:"-with-dash"`
 	WithTwoDash    bool `flag:"--with-two-dash"`
@@ -200,8 +203,10 @@ var tests = []BindTest{
 			DefaultInheritOverride:    43,
 			PtrDefault:                func() *int { b := 55; return &b }(),
 			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
+
+			_ExtendedUsage: "Extended usage",
 		},
-		UsageContains:    []string{"Unique usage goes here"},
+		UsageContains:    []string{"Unique usage goes here", "Extended usage"},
 		UsageNotContains: []string{"Hidden usage", "default value"},
 		ParseArgs: []string{
 			"-different-flag-name",
@@ -254,6 +259,8 @@ var tests = []BindTest{
 			NestedFlat:                StructB{true},
 			StructA:                   StructA{true},
 			StructB:                   StructB{true},
+
+			_ExtendedUsage: "Extended usage",
 		},
 	}, {
 		Name: "ignored",
@@ -274,15 +281,26 @@ var tests = []BindTest{
 		ParseArgs: []string{
 			"-skip",
 		},
-		ExpF: &ValidTestFlags{
-			Ignored:    false,
-			Default:    true,
-			PtrDefault: func() *int { b := 50; return &b }(),
-		},
 		ErrParse:      "flag provided but not defined: -skip",
 		ErrPFlagParse: "unknown flag: --skip",
 	}, {
-		Name: "invalid nested struct",
+		Name: "invalid short name ignored",
+		F: &struct {
+			E bool `flag:"lg,long"`
+		}{},
+		ParseArgs: []string{
+			"-lg",
+		},
+		ErrParse:      "flag provided but not defined: -lg",
+		ErrPFlagParse: "unknown flag: --lg",
+	}, {
+		Name: "ErrorMissingUsage",
+		F: &struct {
+			E bool `flag:";;_"`
+		}{},
+		ErrBind: ErrorMissingUsage{"E"}.Error(),
+	}, {
+		Name: "ErrorNestedStruct",
 		F: &struct {
 			E struct {
 				Value TestValue `flag:";asdf;"`
@@ -291,52 +309,10 @@ var tests = []BindTest{
 		ErrBind: ErrorNestedStruct{"E",
 			ErrorDefaultValue{"Value", "asdf", nil}}.Error(),
 	}, {
-		Name: "invalid default Value",
+		Name: "ErrorDefaultValue",
 		F: &struct {
 			Value TestValue `flag:";asdf;"`
 		}{},
 		ErrBind: ErrorDefaultValue{"Value", "asdf", nil}.Error(),
-	}, {
-		Name: "invalid default bool",
-		F: &struct {
-			Bool bool `flag:";asdf;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Bool", "asdf", nil}.Error(),
-	}, {
-		Name: "invalid default int",
-		F: &struct {
-			Int int `flag:";asdf;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Int", "asdf", nil}.Error(),
-	}, {
-		Name: "invalid default uint",
-		F: &struct {
-			Uint uint `flag:";-1;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Uint", "-1", nil}.Error(),
-	}, {
-		Name: "invalid default uint64",
-		F: &struct {
-			Uint64 uint64 `flag:";-1;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Uint64", "-1", nil}.Error(),
-	}, {
-		Name: "invalid default int64",
-		F: &struct {
-			Int64 int64 `flag:";asdf;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Int64", "asdf", nil}.Error(),
-	}, {
-		Name: "invalid default float64",
-		F: &struct {
-			Float64 float64 `flag:";asdf;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Float64", "asdf", nil}.Error(),
-	}, {
-		Name: "invalid default time.Duration",
-		F: &struct {
-			Duration time.Duration `flag:";asdf;"`
-		}{},
-		ErrBind: ErrorDefaultValue{"Duration", "asdf", nil}.Error(),
 	},
 }

@@ -23,7 +23,7 @@
 //
 // Bind allows for creating flags declaratively right alongside the definition
 // of their containing struct. For example, the following stuct could be passed
-// to Bind to populate a flag.FlagSet or pflag.FlagSet.
+// to Bind to populate a flag.FlagSet or github.com/spf13/pflag.FlagSet.
 //
 //	flags := struct {
 //		StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
@@ -36,6 +36,11 @@
 //              // otherwise it is ignored for use with the standard flag package.
 //		ShortName bool `flag:"short,s"`
 //
+//              // Optionally put the usage string in the struct by setting it
+//              // to "_".
+//              URL string `flag:"url,u;http://www.example.com/;_"
+//              _URL string
+//
 //		// Nested and Embedded structs can add a flag name prefix, or not.
 //		Nested     StructA
 //		NestedFlat StructB           `flag:";;;flatten"`
@@ -47,7 +52,8 @@
 //		unexported        bool
 //	}{
 //		// Default values may also be set directly to override the tag.
-//		StringFlag: "override default",
+//		StringFlag: "override tag default",
+//              _URL: "Include a longer usage string for --url here",
 //	}
 //
 //	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
@@ -55,11 +61,12 @@
 //	fs.Parse([]string{"--auto-kebab-case"})
 //
 // Bind works seemlessly with both the standard library flag package and the
-// popular pflag package.
+// popular github.com/spf13/pflag package.
 //
-// For types that only implement flag.Value, Bind wraps them in an adapter so
-// that they can be used as a pflag.Value. The return value of the added
-// function Type() string is the type name of the struct field.
+// If pflag is used, for types that implement flag.Value but not pflag.Value,
+// Bind wraps them in an adapter so that they can still be used as a
+// pflag.Value. The return value of the additional function `Type() string` is
+// the type name of the struct field.
 //
 // Additional options may be set for each flag. See Bind for the full
 // documentation details.
@@ -119,8 +126,9 @@ import (
 //
 // <short> - If flg does not implement PFlagSet, this is ignored. Otherwise, an
 // optional short name may also be provided with the <name>, separated by a
-// comma. The order of <name> and <short> does not matter, but <short> may only
-// be one character long, excluding leading dashes.
+// comma. The order of <name> and <short> does not matter, their lengths will
+// be used to sort them out. If <short> is longer than one character, excluding
+// leading dashes, then it is ignored.
 //
 //
 // <default> - If the current value of the field is zero, Bind attempts to
@@ -129,7 +137,18 @@ import (
 //
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
-// is empty unless specified.
+// is empty unless specified. For longer usage strings that don't fit nicely in
+// tags, specify "_" and define a unexported string field by the same name
+// prepended with "_". For example,
+//
+//       flags := struct {
+//              URL string `flag:"url;;_"`
+//              _URL string
+//      }{"http://www.example.com", "Query this URL"}
+//      err := Bind(flg, &flags)
+//
+// Bind returns ErrorMissingUsage if <usage> is "_" but no corresponding usage
+// string field exists.
 //
 //
 // <options> - A comma separated list of additional options for the flag.
@@ -140,7 +159,7 @@ import (
 //      hidden - (PFlagSet only) Do not show this flag in the usage output.
 //
 //      flatten - (Nested/embedded structs only) Do not prefix the name of the
-//      struct to the names of its fields. This overrides the explicit name on
+//      struct to the names of its fields. This overrides any explicit name on
 //      an embedded struct which would otherwise unflatten it.
 //
 //
@@ -231,6 +250,16 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 
 		if prefix != "" {
 			tag.Name = fmt.Sprintf("%v-%v", prefix, tag.Name)
+		}
+
+		// If UsageRef is set, check for the _<fieldT.Name> string
+		// usage field.
+		if tag.UsageRef {
+			usageT, ok := valT.FieldByName("_" + fieldT.Name)
+			if !ok || usageT.Type.Kind() != reflect.String {
+				return ErrorMissingUsage{fieldT.Name}
+			}
+			tag.Usage = val.Field(i + 1).String()
 		}
 
 		switch p := fieldV.Interface().(type) {

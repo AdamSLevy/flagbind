@@ -64,3 +64,16 @@ func (err ErrorDefaultValue) Error() string {
 func (err ErrorDefaultValue) Unwrap() error {
 	return err.Err
 }
+
+// ErrorMissingUsage is returned from Bind if the <usage> tag is "_" but no
+// corresponding usage string field exists. Either change <usage> to not be set
+// to "_" or add a string field by the same name prepended with "_".
+type ErrorMissingUsage struct {
+	FieldName string
+}
+
+// Error implements error.
+func (err ErrorMissingUsage) Error() string {
+	return fmt.Sprintf(`%[1]v: <usage> tag is "_" but no _%[1]v string field exists`,
+		err.FieldName)
+}
