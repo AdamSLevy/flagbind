@@ -23,7 +23,6 @@ package flagbind
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -73,7 +72,6 @@ func (test *BindTest) test(t *testing.T) {
 		FlagSet
 		SetOutput(io.Writer)
 		Usage() string
-		Parse([]string) error
 	}
 	args := test.ParseArgs
 	if test.UsePFlag {
@@ -249,6 +247,7 @@ var tests = []BindTest{
 			Float64:                   0.5,
 			Duration:                  time.Minute,
 			String:                    "string val",
+			HideDefault:               "default value",
 			Value:                     true,
 			ValueDefault:              true,
 			Nested:                    StructA{true},
@@ -289,70 +288,55 @@ var tests = []BindTest{
 				Value TestValue `flag:";asdf;"`
 			}
 		}{},
-		ErrBind: ErrorNestedStruct{"E", ErrorDefaultValue{"Value", "asdf",
-			fmt.Errorf(`could not parse "asdf" as TestValue`)}}.Error(),
+		ErrBind: ErrorNestedStruct{"E",
+			ErrorDefaultValue{"Value", "asdf", nil}}.Error(),
 	}, {
 		Name: "invalid default Value",
 		F: &struct {
 			Value TestValue `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Value", "asdf",
-			fmt.Errorf(`could not parse "asdf" as TestValue`)}.Error(),
+		ErrBind: ErrorDefaultValue{"Value", "asdf", nil}.Error(),
 	}, {
 		Name: "invalid default bool",
 		F: &struct {
 			Bool bool `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Bool", "asdf",
-			fmt.Errorf(`strconv.ParseBool: parsing "asdf": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Bool", "asdf", nil}.Error(),
 	}, {
 		Name: "invalid default int",
 		F: &struct {
 			Int int `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Int", "asdf",
-			fmt.Errorf(`strconv.ParseInt: parsing "asdf": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Int", "asdf", nil}.Error(),
 	}, {
 		Name: "invalid default uint",
 		F: &struct {
 			Uint uint `flag:";-1;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Uint", "-1",
-			fmt.Errorf(`strconv.ParseUint: parsing "-1": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Uint", "-1", nil}.Error(),
 	}, {
 		Name: "invalid default uint64",
 		F: &struct {
 			Uint64 uint64 `flag:";-1;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Uint64", "-1",
-			fmt.Errorf(`strconv.ParseUint: parsing "-1": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Uint64", "-1", nil}.Error(),
 	}, {
 		Name: "invalid default int64",
 		F: &struct {
 			Int64 int64 `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Int64", "asdf",
-			fmt.Errorf(`strconv.ParseInt: parsing "asdf": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Int64", "asdf", nil}.Error(),
 	}, {
 		Name: "invalid default float64",
 		F: &struct {
 			Float64 float64 `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Float64", "asdf",
-			fmt.Errorf(`strconv.ParseFloat: parsing "asdf": invalid syntax`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Float64", "asdf", nil}.Error(),
 	}, {
 		Name: "invalid default time.Duration",
 		F: &struct {
 			Duration time.Duration `flag:";asdf;"`
 		}{},
-		ErrBind: ErrorDefaultValue{"Duration", "asdf",
-			fmt.Errorf(`time: invalid duration asdf`),
-		}.Error(),
+		ErrBind: ErrorDefaultValue{"Duration", "asdf", nil}.Error(),
 	},
 }

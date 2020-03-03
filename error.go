@@ -56,8 +56,8 @@ type ErrorDefaultValue struct {
 
 // Error implements error.
 func (err ErrorDefaultValue) Error() string {
-	return fmt.Sprintf("%v: cannot assign default value %q: %v",
-		err.FieldName, err.Value, err.Err)
+	return fmt.Sprintf("%v: cannot assign default value from tag: %q",
+		err.FieldName, err.Value)
 }
 
 // Unwrap implements Unwrap.

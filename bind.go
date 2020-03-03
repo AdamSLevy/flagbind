@@ -69,7 +69,6 @@ import (
 	"flag"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -234,17 +233,9 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			tag.Name = fmt.Sprintf("%v-%v", prefix, tag.Name)
 		}
 
-		var err error
 		switch p := fieldV.Interface().(type) {
 		case *bool:
 			val := *p
-			if isZero && tag.Value != "" {
-				val, err = strconv.ParseBool(tag.Value)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.BoolVar(p, tag.Name, val, tag.Usage)
 				break
@@ -252,13 +243,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.BoolVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *time.Duration:
 			val := *p
-			if isZero && tag.Value != "" {
-				val, err = time.ParseDuration(tag.Value)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.DurationVar(p, tag.Name, val, tag.Usage)
 				break
@@ -266,15 +250,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.DurationVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *int:
 			val := *p
-			if isZero && tag.Value != "" {
-				val64, err := strconv.ParseInt(tag.Value, 10,
-					strconv.IntSize)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-				val = int(val64)
-			}
 			if !usePFlag {
 				stdflg.IntVar(p, tag.Name, val, tag.Usage)
 				break
@@ -282,15 +257,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.IntVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *uint:
 			val := *p
-			if isZero && tag.Value != "" {
-				val64, err := strconv.ParseUint(tag.Value, 10,
-					strconv.IntSize)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-				val = uint(val64)
-			}
 			if !usePFlag {
 				stdflg.UintVar(p, tag.Name, val, tag.Usage)
 				break
@@ -298,13 +264,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.UintVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *int64:
 			val := *p
-			if isZero && tag.Value != "" {
-				val, err = strconv.ParseInt(tag.Value, 10, 64)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.Int64Var(p, tag.Name, val, tag.Usage)
 				break
@@ -312,13 +271,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.Int64VarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *uint64:
 			val := *p
-			if isZero && tag.Value != "" {
-				val, err = strconv.ParseUint(tag.Value, 10, 64)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.Uint64Var(p, tag.Name, val, tag.Usage)
 				break
@@ -326,13 +278,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			pflg.Uint64VarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case *float64:
 			val := *p
-			if isZero && tag.Value != "" {
-				val, err = strconv.ParseFloat(tag.Value, 64)
-				if err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.Float64Var(p, tag.Name, val, tag.Usage)
 				break
@@ -346,12 +291,6 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			}
 			pflg.StringVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 		case flag.Value:
-			if isZero && tag.Value != "" {
-				if err := p.Set(tag.Value); err != nil {
-					return ErrorDefaultValue{
-						fieldT.Name, tag.Value, err}
-				}
-			}
 			if !usePFlag {
 				stdflg.Var(p, tag.Name, tag.Usage)
 				break
@@ -363,6 +302,13 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 				pp = pflagValue{p, fieldT.Type.Name()}
 			}
 			pflg.VarP(pp, tag.Name, tag.ShortName, tag.Usage)
+		}
+
+		// Set the tag default value, if field was zero.
+		if isZero && tag.Value != "" {
+			if err := flg.Set(tag.Name, tag.Value); err != nil {
+				return ErrorDefaultValue{fieldT.Name, tag.Value, err}
+			}
 		}
 
 		// Apply flag options
