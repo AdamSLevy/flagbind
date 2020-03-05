@@ -31,7 +31,6 @@ type flagTag struct {
 	ShortName    string
 	Value        string
 	Usage        string
-	UsageRef     bool
 
 	Ignored bool
 
@@ -62,8 +61,7 @@ func newFlagTag(tag string) (fTag flagTag) {
 		return
 	}
 
-	fTag.Usage = args[2]
-	fTag.UsageRef = fTag.Usage == "_"
+	fTag.Usage = strings.TrimSpace(args[2])
 	if len(args) == 3 {
 		return
 	}

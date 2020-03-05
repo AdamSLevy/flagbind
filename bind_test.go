@@ -144,11 +144,13 @@ type ValidTestFlags struct {
 	LongShort      bool `flag:"long,l"`
 	ShortLong      bool `flag:"r,-rlong"`
 
-	ExtendedUsage bool   `flag:";;_"`
-	_             string `use:"Extended usage"`
+	ExtendedUsage bool     `flag:";;"`
+	_             struct{} `use:"Extended usage, "`
+	_             struct{} `use:"continue usage"`
 
-	Hidden      bool   `flag:";;Hidden usage;hidden"`
-	HideDefault string `flag:";default value;Hide default;hide-default"`
+	Hidden      bool     `flag:";;Hidden usage;hidden"`
+	HideDefault string   `flag:";default value;Hide default;hide-default"`
+	_           struct{} // no use tag
 
 	Ptr                       *bool
 	PtrDefault                *int `flag:";50"`

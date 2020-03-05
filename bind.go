@@ -36,10 +36,10 @@
 //              // otherwise it is ignored for use with the standard flag package.
 //		ShortName bool `flag:"short,s"`
 //
-//              // Optionally put the usage string in the struct by setting it
-//              // to "_".
-//              URL string `flag:"url,u;http://www.example.com/;_"
-//              _URL string
+//              // Optionally extende the usage tag with subsequent `use` tags
+//              // on _ fields.
+//              URL string `flag:"url,u;http://www.example.com/;Start usage here"
+//              _   struct{} `use:"continue longer usage string for --url below it",
 //
 //		// Nested and Embedded structs can add a flag name prefix, or not.
 //		Nested     StructA
@@ -53,7 +53,6 @@
 //	}{
 //		// Default values may also be set directly to override the tag.
 //		StringFlag: "override tag default",
-//              _URL: "Include a longer usage string for --url here",
 //	}
 //
 //	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
@@ -144,12 +143,13 @@ var PrefixSeparator = "-"
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
 // is empty unless specified. For longer usage strings that don't fit nicely in
-// the same tag, specify "_" and define the following field as _ with a
-// `use:"..."` tag. For example,
+// a single tag, you may define subsequent fields named _ with a `use:"..."`
+// tag. These are joined with a single space into the full usage. For example,
 //
 //       flags := struct {
-//              URL string `flag:"url;;_"`
-//              _ struct{} `use:"URL usage goes here"`
+//              URL string `flag:"url;;Start usage here..."`
+//              _ struct{} `use:"... contiued usage goes here"`
+//              _ struct{} `use:"... and more here"`
 //      }{"http://www.example.com", "Query this URL"}
 //      err := Bind(flg, &flags)
 //
@@ -257,14 +257,21 @@ func BindWithPrefix(flg FlagSet, v interface{}, prefix string) error {
 
 		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
 
-		// If UsageRef is set, check for the _<fieldT.Name> string
-		// usage field.
-		if tag.UsageRef && i+1 < val.NumField() {
+		// Check for extended usage tags.
+		for i := i + 1; i < val.NumField(); i++ {
 			// Check if next field is named "_" and has a use tag.
-			usageT := valT.Field(i + 1)
-			if usageT.Name == "_" {
-				tag.Usage = usageT.Tag.Get("use")
+			usageT := valT.Field(i)
+			if usageT.Name != "_" {
+				break
 			}
+			usage, ok := usageT.Tag.Lookup("use")
+			if !ok {
+				break
+			}
+			if tag.Usage != "" {
+				tag.Usage += " "
+			}
+			tag.Usage += usage
 		}
 
 		switch p := fieldV.Interface().(type) {

@@ -23,9 +23,10 @@ flags := struct {
         // otherwise it is ignored for use with the standard flag package.
         ShortName bool `flag:"short,s"`
 
-        // Optionally put the usage string in the struct by setting it to "_".
-        URL string `flag:"url,u;http://www.example.com/;_"
-        _URL string
+        // Optionally extende the usage tag with subsequent `use` tags
+        // on _ fields.
+        URL string `flag:"url,u;http://www.example.com/;Start usage here"
+        _   struct{} `use:"continue longer usage string for --url below it",
 
         // Nested and Embedded structs can add a flag name prefix, or not.
         Nested     StructA
