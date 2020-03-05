@@ -227,7 +227,7 @@ func BindWithPrefix(flg FlagSet, v interface{}, prefix string) error {
 			// OR
 			// We are using pflag and the long name is the same as
 			// the short name, which is disallowed.
-			tag.Name = kebabCase(fieldT.Name)
+			tag.Name = CamelToKebabCase(fieldT.Name)
 		}
 
 		fieldV := val.Field(i)

@@ -18,6 +18,7 @@ var kebabTests = []KebabTest{
 	{"URL", "url"},
 	{"ServerURL", "server-url"},
 	{"APIServerURL", "api-server-url"},
+	{"APIUrlID", "api-url-id"},
 	{"AutoKebab", "auto-kebab"},
 	{"StructABool", "struct-a-bool"},
 }
@@ -25,7 +26,7 @@ var kebabTests = []KebabTest{
 func TestKebab(t *testing.T) {
 	for _, test := range kebabTests {
 		t.Run(test.Camel, func(t *testing.T) {
-			assert.Equal(t, test.Kebab, kebabCase(test.Camel), test.Camel)
+			assert.Equal(t, test.Kebab, CamelToKebabCase(test.Camel), test.Camel)
 		})
 	}
 }

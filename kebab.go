@@ -24,7 +24,18 @@ import (
 	"unicode"
 )
 
-func kebabCase(name string) string {
+// CamelToKebabCase converts CamelCase to kebab-case. It makes a best effort at
+// respecting capitalized acronyms. For example:
+//
+//      camel -> camel
+//      CamelCamel -> camel-camel
+//      CamelID -> camel-id
+//      IDCamel -> id-camel
+//      APICamel -> api-camel
+//      APIURL -> apiurl
+//      ApiUrl -> api-url
+//      APIUrlID -> api-url-id
+func CamelToKebabCase(name string) string {
 	var kebab string
 	var acronym string
 	for _, r := range name {
