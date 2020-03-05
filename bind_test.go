@@ -136,8 +136,6 @@ type ValidTestFlags struct {
 	DefaultInherit bool
 	Default        bool `flag:";true"`
 	Usage          bool `flag:";;Unique usage goes here"`
-	ExtendedUsage  bool `flag:";;_"`
-	_ExtendedUsage string
 	CustomName     bool `flag:"different-flag-name"`
 	WithDash       bool `flag:"-with-dash"`
 	WithTwoDash    bool `flag:"--with-two-dash"`
@@ -145,6 +143,9 @@ type ValidTestFlags struct {
 	Short          bool `flag:"s"`
 	LongShort      bool `flag:"long,l"`
 	ShortLong      bool `flag:"r,-rlong"`
+
+	ExtendedUsage bool   `flag:";;_"`
+	_             string `use:"Extended usage"`
 
 	Hidden      bool   `flag:";;Hidden usage;hidden"`
 	HideDefault string `flag:";default value;Hide default;hide-default"`
@@ -170,7 +171,11 @@ type ValidTestFlags struct {
 	String       string
 	Value        TestValue
 	ValueDefault TestValue `flag:";true;"`
+
+	Unsupported UnsupportedType
 }
+
+type UnsupportedType int
 
 type StructA struct {
 	StructABool bool
@@ -187,15 +192,20 @@ func TestBind(t *testing.T) {
 
 var tests = []BindTest{
 	{
-		Name: "invalid type",
-		F: struct {
-			Bool bool
-		}{},
-		ErrBind: ErrorInvalidType.Error(),
+		Name:    "ErrorInvalidType_bool",
+		F:       true,
+		ErrBind: ErrorInvalidType{bool(true), false}.Error(),
 	}, {
-		Name:    "invalid type",
+		Name:    "ErrorInvalidType_int_ptr",
 		F:       new(int),
-		ErrBind: ErrorInvalidType.Error(),
+		ErrBind: ErrorInvalidType{new(int), false}.Error(),
+	}, {
+		Name:    "ErrorInvalidType_nil",
+		ErrBind: ErrorInvalidType{nil, false}.Error(),
+	}, {
+		Name:    "ErrorInvalidType_*struct{}(nil)",
+		F:       (*struct{})(nil),
+		ErrBind: ErrorInvalidType{(*struct{})(nil), false}.Error(),
 	}, {
 		Name: "valid",
 		F: &ValidTestFlags{
@@ -203,8 +213,6 @@ var tests = []BindTest{
 			DefaultInheritOverride:    43,
 			PtrDefault:                func() *int { b := 55; return &b }(),
 			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
-
-			_ExtendedUsage: "Extended usage",
 		},
 		UsageContains:    []string{"Unique usage goes here", "Extended usage"},
 		UsageNotContains: []string{"Hidden usage", "default value"},
@@ -259,8 +267,6 @@ var tests = []BindTest{
 			NestedFlat:                StructB{true},
 			StructA:                   StructA{true},
 			StructB:                   StructB{true},
-
-			_ExtendedUsage: "Extended usage",
 		},
 	}, {
 		Name: "ignored",
@@ -293,12 +299,6 @@ var tests = []BindTest{
 		},
 		ErrParse:      "flag provided but not defined: -lg",
 		ErrPFlagParse: "unknown flag: --lg",
-	}, {
-		Name: "ErrorMissingUsage",
-		F: &struct {
-			E bool `flag:";;_"`
-		}{},
-		ErrBind: ErrorMissingUsage{"E"}.Error(),
 	}, {
 		Name: "ErrorNestedStruct",
 		F: &struct {

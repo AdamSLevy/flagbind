@@ -43,7 +43,7 @@ type flagTag struct {
 
 // newFlagTag parses all possible tag settings.
 func newFlagTag(tag string) (fTag flagTag) {
-	if len(tag) == 0 {
+	if tag == "" {
 		return
 	}
 	args := strings.Split(tag, ";")

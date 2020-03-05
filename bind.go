@@ -82,6 +82,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// PrefixSeparator is used to separate a prefix from a flag name.
+var PrefixSeparator = "-"
+
 // Bind the exported fields of struct v to new flags in flg.
 //
 // Bind returns ErrorInvalidFlagSet if flg does not implement STDFlagSet or
@@ -97,9 +100,12 @@ import (
 //
 // If v contains nested or embedded structs, their fields are parsed
 // recursively. By default the names of nested struct fields are prepended with
-// the name(s) of their parent(s) to help avoid flag name collisions. The
-// prefix can be omitted for a nested struct with the `flatten` <option>. See
-// Flag Settings below.
+// the name(s) of their parent(s) separated by PrefixSeparator to help avoid
+// flag name collisions. Explicit names of nested or embedded structs with a
+// trailing "." or "-" will not have the PrefixSeparator appended.
+//
+// The prefix can be omitted for a nested struct with the `flatten` <option>.
+// See Flag Settings below.
 //
 // By default, the flag names of embedded embedded struct fields are treated as
 // if they are part of the top level struct. However, an explicit flag name may
@@ -138,17 +144,14 @@ import (
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
 // is empty unless specified. For longer usage strings that don't fit nicely in
-// tags, specify "_" and define a unexported string field by the same name
-// prepended with "_". For example,
+// the same tag, specify "_" and define the following field as _ with a
+// `use:"..."` tag. For example,
 //
 //       flags := struct {
 //              URL string `flag:"url;;_"`
-//              _URL string
+//              _ struct{} `use:"URL usage goes here"`
 //      }{"http://www.example.com", "Query this URL"}
 //      err := Bind(flg, &flags)
-//
-// Bind returns ErrorMissingUsage if <usage> is "_" but no corresponding usage
-// string field exists.
 //
 //
 // <options> - A comma separated list of additional options for the flag.
@@ -181,17 +184,23 @@ import (
 // need to implement flag.Value. If the field does implement pflag.Value, it is
 // used directly.
 func Bind(flg FlagSet, v interface{}) error {
-	return bind(flg, v, "")
+	return BindWithPrefix(flg, v, "")
 }
 
-func bind(flg FlagSet, v interface{}, prefix string) error {
+// TODO: update docs
+// TODO: option for flag case conversion
+
+func BindWithPrefix(flg FlagSet, v interface{}, prefix string) error {
 	ptr := reflect.ValueOf(v)
 	if ptr.Kind() != reflect.Ptr {
-		return ErrorInvalidType
+		return ErrorInvalidType{v, false}
+	}
+	if ptr.IsNil() {
+		return ErrorInvalidType{v, true}
 	}
 	val := reflect.Indirect(ptr)
 	if val.Kind() != reflect.Struct {
-		return ErrorInvalidType
+		return ErrorInvalidType{v, false}
 	}
 
 	stdflg, useSTDFlag := flg.(STDFlagSet)
@@ -221,45 +230,41 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 			tag.Name = kebabCase(fieldT.Name)
 		}
 
-		var isZero bool
 		fieldV := val.Field(i)
 		if fieldT.Type.Kind() != reflect.Ptr {
-			isZero = fieldV.IsZero()
 			// The field is not a ptr, so get a ptr to it.
 			fieldV = fieldV.Addr()
-		} else if fieldV.IsNil() {
-			// We have a nil ptr, so allocate it.
-			fieldV.Set(reflect.New(fieldT.Type.Elem()))
-		} else {
-			// We have a pre-allocated pointer.
-			isZero = fieldV.Elem().IsZero()
 		}
+		allocateIfNil(fieldV)
+		isZero := fieldV.Elem().IsZero()
 
 		if fieldT.Type.Kind() == reflect.Struct {
 			prefix := prefix
 			if !tag.Flatten &&
 				(!fieldT.Anonymous || tag.ExplicitName) {
-				prefix = strings.Trim(
-					fmt.Sprintf("%v-%v", prefix, tag.Name), "-")
+				prefix += tag.Name
 			}
-			if err := bind(flg, fieldV.Interface(), prefix); err != nil {
+			if prefix != "" && !strings.HasSuffix(prefix, "-") &&
+				!strings.HasSuffix(prefix, ".") {
+				prefix += "-"
+			}
+			if err := BindWithPrefix(flg, fieldV.Interface(),
+				prefix); err != nil {
 				return ErrorNestedStruct{fieldT.Name, err}
 			}
 			continue
 		}
 
-		if prefix != "" {
-			tag.Name = fmt.Sprintf("%v-%v", prefix, tag.Name)
-		}
+		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
 
 		// If UsageRef is set, check for the _<fieldT.Name> string
 		// usage field.
-		if tag.UsageRef {
-			usageT, ok := valT.FieldByName("_" + fieldT.Name)
-			if !ok || usageT.Type.Kind() != reflect.String {
-				return ErrorMissingUsage{fieldT.Name}
+		if tag.UsageRef && i+1 < val.NumField() {
+			// Check if next field is named "_" and has a use tag.
+			usageT := valT.Field(i + 1)
+			if usageT.Name == "_" {
+				tag.Usage = usageT.Tag.Get("use")
 			}
-			tag.Usage = val.Field(i + 1).String()
 		}
 
 		switch p := fieldV.Interface().(type) {
@@ -331,6 +336,8 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 				pp = pflagValue{p, fieldT.Type.Name()}
 			}
 			pflg.VarP(pp, tag.Name, tag.ShortName, tag.Usage)
+		default:
+			continue
 		}
 
 		// Set the tag default value, if field was zero.
@@ -358,4 +365,10 @@ func bind(flg FlagSet, v interface{}, prefix string) error {
 	}
 
 	return nil
+}
+
+func allocateIfNil(val reflect.Value) {
+	if val.IsNil() {
+		val.Set(reflect.New(val.Type().Elem()))
+	}
 }

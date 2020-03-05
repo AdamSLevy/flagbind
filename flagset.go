@@ -29,11 +29,13 @@ import (
 
 // FlagSet is an interface satisfied by both *flag.FlagSet and *pflag.FlagSet.
 type FlagSet interface {
-	Parse([]string) error
+	Arg(i int) string
 	Args() []string
 	NArg() int
 	NFlag() int
 	Set(name, value string) error
+
+	Parse([]string) error
 
 	BoolVar(p *bool, name string, value bool, usage string)
 	DurationVar(p *time.Duration, name string, value time.Duration, usage string)

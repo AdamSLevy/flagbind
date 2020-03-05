@@ -23,7 +23,18 @@ package flagbind
 import "fmt"
 
 // ErrorInvalidType is returned from Bind if v is not a pointer to a struct."
-var ErrorInvalidType = fmt.Errorf("v must be a pointer to a struct")
+type ErrorInvalidType struct {
+	Type interface{}
+	Nil  bool
+}
+
+// Error implements error.
+func (err ErrorInvalidType) Error() string {
+	if err.Nil {
+		fmt.Sprintf("cannot bind flags to nil %T", err.Type)
+	}
+	return fmt.Sprintf("type %T is not a struct pointer", err.Type)
+}
 
 // ErrorInvalidFlagSet is returned from Bind if flg doesn't implement
 // STDFlagSet or PFlagSet.
@@ -63,17 +74,4 @@ func (err ErrorDefaultValue) Error() string {
 // Unwrap implements Unwrap.
 func (err ErrorDefaultValue) Unwrap() error {
 	return err.Err
-}
-
-// ErrorMissingUsage is returned from Bind if the <usage> tag is "_" but no
-// corresponding usage string field exists. Either change <usage> to not be set
-// to "_" or add a string field by the same name prepended with "_".
-type ErrorMissingUsage struct {
-	FieldName string
-}
-
-// Error implements error.
-func (err ErrorMissingUsage) Error() string {
-	return fmt.Sprintf(`%[1]v: <usage> tag is "_" but no _%[1]v string field exists`,
-		err.FieldName)
 }
