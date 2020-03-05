@@ -20,18 +20,36 @@
 
 package flagbind
 
-import "unicode"
+import (
+	"unicode"
+)
 
 func kebabCase(name string) string {
 	var kebab string
+	var acronym string
 	for _, r := range name {
 		if unicode.IsUpper(r) {
-			if len(kebab) > 0 {
+			acronym += string(unicode.ToLower(r))
+			continue
+		}
+		if len(acronym) > 1 {
+			if kebab != "" {
 				kebab += "-"
 			}
-			r = unicode.ToLower(r)
+			kebab += acronym[:len(acronym)-1]       // omit last char
+			kebab += "-" + acronym[len(acronym)-1:] // add last char after -
+			acronym = ""
+		} else if acronym != "" {
+			if kebab != "" {
+				kebab += "-"
+			}
+			kebab += acronym
+			acronym = ""
 		}
 		kebab += string(r)
 	}
-	return kebab
+	if kebab != "" && acronym != "" {
+		kebab += "-"
+	}
+	return kebab + acronym
 }
