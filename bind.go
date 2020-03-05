@@ -246,7 +246,7 @@ func BindWithPrefix(flg FlagSet, v interface{}, prefix string) error {
 			}
 			if prefix != "" && !strings.HasSuffix(prefix, "-") &&
 				!strings.HasSuffix(prefix, ".") {
-				prefix += "-"
+				prefix += PrefixSeparator
 			}
 			if err := BindWithPrefix(flg, fieldV.Interface(),
 				prefix); err != nil {
