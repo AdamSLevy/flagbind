@@ -22,6 +22,7 @@ package flagbind
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"io"
 	"testing"
@@ -157,7 +158,7 @@ type ValidTestFlags struct {
 	DefaultInheritOverride    int  `flag:";41"`
 	PtrDefaultInheritOverride *int `flag:";40"`
 
-	Nested     StructA
+	Nested     *StructA
 	NestedFlat StructB `flag:";;;flatten"`
 
 	StructA // embedded
@@ -168,13 +169,26 @@ type ValidTestFlags struct {
 	Int64        int64         `flag:";0"`
 	Uint         uint          `flag:";0"`
 	Uint64       uint64        `flag:";0"`
+	Float32      float32       `flag:";0"`
 	Float64      float64       `flag:";0"`
 	Duration     time.Duration `flag:";0"`
+	JSON         json.RawMessage
 	String       string
 	Value        TestValue
 	ValueDefault TestValue `flag:";true;"`
 
+	BoolS     []bool
+	IntS      []int
+	Int64S    []int64
+	UintS     []uint
+	Float32S  []float32
+	Float64S  []float64
+	DurationS []time.Duration
+	StringS   []string
+
 	Unsupported UnsupportedType
+
+	ExportedInterface interface{}
 }
 
 type UnsupportedType int
@@ -265,7 +279,7 @@ var tests = []BindTest{
 			HideDefault:               "default value",
 			Value:                     true,
 			ValueDefault:              true,
-			Nested:                    StructA{true},
+			Nested:                    &StructA{true},
 			NestedFlat:                StructB{true},
 			StructA:                   StructA{true},
 			StructB:                   StructB{true},
@@ -301,6 +315,27 @@ var tests = []BindTest{
 		},
 		ErrParse:      "flag provided but not defined: -lg",
 		ErrPFlagParse: "unknown flag: --lg",
+	}, {
+		Name: "valid JSON",
+		F: &struct {
+			E json.RawMessage `flag:"json"`
+		}{},
+		ExpF: &struct {
+			E json.RawMessage `flag:"json"`
+		}{E: json.RawMessage(`{"hello":"world"}`)},
+		ParseArgs: []string{
+			`-json`, `{"hello":"world"}`,
+		},
+	}, {
+		Name: "invalid JSON",
+		F: &struct {
+			E json.RawMessage `flag:"json"`
+		}{},
+		ParseArgs: []string{
+			`-json`, `asdf{"hello":"world"}`,
+		},
+		ErrParse:      "invalid value \"asdf{\\\"hello\\\":\\\"world\\\"}\" for flag -json: invalid character 'a' looking for beginning of value",
+		ErrPFlagParse: "invalid argument \"asdf{\\\"hello\\\":\\\"world\\\"}\" for \"--json\" flag: invalid character 'a' looking for beginning of value",
 	}, {
 		Name: "ErrorNestedStruct",
 		F: &struct {

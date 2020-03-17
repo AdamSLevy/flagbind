@@ -57,14 +57,33 @@ type STDFlagSet interface {
 // PFlagSet is an interface satisfied by *pflag.FlagSet.
 type PFlagSet interface {
 	Lookup(name string) *pflag.Flag
+
 	BoolVarP(p *bool, name, short string, value bool, usage string)
+	BoolSliceVarP(p *[]bool, name, shorthand string, value []bool, usage string)
+
 	DurationVarP(p *time.Duration, name, short string, value time.Duration, usage string)
+	DurationSliceVarP(p *[]time.Duration, name, short string, value []time.Duration, usage string)
+
+	Float32VarP(p *float32, name, short string, value float32, usage string)
+	Float32SliceVarP(p *[]float32, name, short string, value []float32, usage string)
+
 	Float64VarP(p *float64, name, short string, value float64, usage string)
+	Float64SliceVarP(p *[]float64, name, short string, value []float64, usage string)
+
 	Int64VarP(p *int64, name, short string, value int64, usage string)
+	Int64SliceVarP(p *[]int64, name, short string, value []int64, usage string)
+
 	IntVarP(p *int, name, short string, value int, usage string)
+	IntSliceVarP(p *[]int, name, short string, value []int, usage string)
+
 	StringVarP(p *string, name, short string, value string, usage string)
+	StringSliceVarP(p *[]string, name, short string, value []string, usage string)
+
 	Uint64VarP(p *uint64, name, short string, value uint64, usage string)
+
 	UintVarP(p *uint, name, short string, value uint, usage string)
+	UintSliceVarP(p *[]uint, name, short string, value []uint, usage string)
+
 	VarP(value pflag.Value, name, short string, usage string)
 }
 
