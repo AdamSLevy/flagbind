@@ -18,14 +18,15 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-// Package flagbind parses the exported fields of a struct and binds them to
-// flags in a flag.FlagSet or pflag.FlagSet.
+// Package flagbind makes defining flags as simple as defining a struct type.
 //
-// Bind allows for creating flags declaratively right alongside the definition
-// of their containing struct. For example, the following stuct could be passed
-// to Bind to populate a flag.FlagSet or github.com/spf13/pflag.FlagSet.
+// flagbind.Bind parses the exported fields of a struct and binds them to a
+// FlagSet. This works with the standard flag package as well as
+// github.com/spf13/pflag.
 //
-//	flags := struct {
+// Start by declaring a struct type for your flags.
+//
+//	var flags := struct {
 //		StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
 //		Int        int    `flag:"integer;5"`
 //
@@ -82,37 +83,36 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// PrefixSeparator is used to separate a prefix from a flag name.
-var PrefixSeparator = "-"
+// Separator is used to separate a prefix from a flag name and as the separator
+// passed to FromCamelCase.
+var Separator = "-"
 
 // Bind the exported fields of struct v to new flags in fs.
 //
 // Bind returns ErrorInvalidFlagSet if fs does not implement STDFlagSet or
-// PFlagSet. See flag.FlagSet and pflag.FlagSet.
+// PFlagSet.
 //
 // Bind returns ErrorInvalidType if v is not a pointer to a struct.
 //
-// For each field of v, Bind attempts to bind a new flag in fs if it is a
-// supported type, or a pointer to a supported type. If the field is a nil
-// pointer, it is initialized. See FlagSet for a list of supported types.
+// For each exported field of v that is a supported type (or a pointer to a
+// supported type), Bind defines a corresponding flag in fs.
 //
-// Bind panics if a duplicate flag name occurs.
+// For a complete list of supported types see STDFlagSet and PFlagSet.
+// Additionally, a json.RawMessage is also supported and is parsed as a
+// JSONRawMessage flag.
 //
-// If v contains nested or embedded structs, their fields are parsed
-// recursively. By default the names of nested struct fields are prepended with
-// the name(s) of their parent(s) separated by PrefixSeparator to help avoid
-// flag name collisions. Explicit names of nested or embedded structs with a
-// trailing "." or "-" will not have the PrefixSeparator appended.
+// If the field is a nil pointer, it is initialized.
 //
-// The prefix can be omitted for a nested struct with the `flatten` <option>.
-// See Flag Settings below.
-//
-// By default, the flag names of embedded embedded struct fields are treated as
-// if they are part of the top level struct. However, an explicit flag name may
-// be given to an embedded struct to unflatten its fields like a nested struct.
+// Bind returns an error if a duplicate flag name occurs.
 //
 //
-// Flag Settings
+// Ignoring a Field
+//
+// Use the tag `flag:"-"` to prevent a field from being bound to any flag. If
+// the field is a nested or embedded struct then its fields are also ignored.
+//
+//
+// Flag Tag Settings
 //
 // The settings for a particular flag can be customized using a struct field
 // tag of the form:
@@ -143,16 +143,8 @@ var PrefixSeparator = "-"
 //
 //
 // <usage> - The usage string for the flag. By default, the usage for the flag
-// is empty unless specified. For longer usage strings that don't fit nicely in
-// a single tag, you may define subsequent fields named _ with a `use:"..."`
-// tag. These are joined with a single space into the full usage. For example,
-//
-//       flags := struct {
-//              URL string `flag:"url;;Start usage here..."`
-//              _ struct{} `use:"... contiued usage goes here"`
-//              _ struct{} `use:"... and more here"`
-//      }{"http://www.example.com", "Query this URL"}
-//      err := Bind(fs, &flags)
+// is empty unless specified. See Extended Usage below for a way to break
+// longer usage strings across multiple lines.
 //
 //
 // <options> - A comma separated list of additional options for the flag.
@@ -167,13 +159,22 @@ var PrefixSeparator = "-"
 //      an embedded struct which would otherwise unflatten it.
 //
 //
-// Ignoring a Field
+// Extended Usage
 //
-// Use the tag `flag:"-"` to prevent a field from being bound to any flag. If
-// the field is a nested or embedded struct then its fields are also ignored.
+// Usage lines can frequently be longer than what comfortably fits in a flag
+// tag on a single line. To keep line lengths shorter, any number of blank
+// identifier fields (`_`), each with a `use` tag, may be defined immediately
+// following a `flag` tag. Each `use` tag is joined with the existing usage
+// with a single space inserted where needed.
+//
+//      type Flags struct {
+//      	URL string   `flag:"url;;Usage starts here"`
+//      	_   struct{} `use:"and continues here"`
+//      	_   struct{} `use:"and ends here."`
+//      }
 //
 //
-// Adapt flag.Value To pflag.Value When fs Implements PFlagSet
+// Auto-Adapt flag.Value To pflag.Value
 //
 // The pflag.Value interface is the flag.Value interface, but with an
 // additional Type() string function. This means that flag.Value cannot be used
@@ -184,14 +185,61 @@ var PrefixSeparator = "-"
 // uses the underlying type name as the Type() string. This allows you to only
 // need to implement flag.Value. If the field does implement pflag.Value, it is
 // used directly.
+//
+//
+// Nested/Embedded Structs
+//
+// If the field is a nested or embedded struct, its fields are also recursively
+// parsed.
+//
+// In order to help avoid flag name collisions, child flag names may be
+// prepended with a prefix. The prefix defaults to the parent's field name
+// passed through FromCamelCase, with a trailing Separator.
+//
+// The prefix may be set explicitly using the <name> on the parent's Flag Tag.
+//
+// To allow for a distinct separator symbol to be used just for a prefix, an
+// explicitly set prefix that ends in "-", "_", or "." will not have Separator
+// appended.
+//
+// By default, flags in nested structs always have a prefix, but this can be
+// omitted with Flag Tag `flatten` <option>.
+//
+// By default, flags in embedded structs do not given a prefix, but one can be
+// added by setting an explicit Flag Tag <name>.
+//
+//
+// Overriding Flag Settings
+//
+// It is not always possible to set a Flag Tag on the fields of a nested struct
+// type, such as when the type is from an external package. To allow for
+// setting the default value, usage, or other options, an Overriding Flag Tag
+// may be specified on a blank identifier field (`_`) that occurs anywhere
+// after the field that defined the overridden flag.
+//
+// The name specified in the Overriding Flag Tag must exactly match the flag
+// name of the overridden flag, including any prefixes that were prepended due
+// to nesting. Bind returns ErrorFlagOverrideUndefined if the flag name cannot
+// be found.
+//
+// Extended Usage may also defined immediately after an Overriding Flag Tag
+// field.
+//
+// For example, this sets the default value and usage on the flag for Timeout
+// on an embedded http.Client.
+//
+//      type Flags struct {
+//      	http.Client // Defines the -timeout flag
+//      	_ struct{} `flag:"timeout;5s;HTTP request timeout"`
+//      	_ struct{} `use:"... continued usage"`
+//      }
 func Bind(fs FlagSet, v interface{}) error {
 	return BindWithPrefix(fs, v, "")
 }
 
-// TODO: update docs
-// TODO: option for flag case conversion
-
-func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
+// BindWithPrefix is the same as Bind, but all flag names are prefixed with
+// `prefix`. Separator is NOT appended to prefix.
+func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
 	ptr := reflect.ValueOf(v)
 	if ptr.Kind() != reflect.Ptr {
 		return ErrorInvalidType{v, false}
@@ -204,60 +252,49 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
 		return ErrorInvalidType{v, false}
 	}
 
+	// The flag and pflag packages panic when a flag with a duplicate name
+	// is defined. This works well for identifying the offending line of
+	// code where the flag name is redefined, but that is just noise to
+	// users of this package. The only useful information from such a panic
+	// is the redefined flagname included in the panic message.
+	defer func() {
+		if r := recover(); r != nil {
+			// Clean up the leading space that pflag leaves behind
+			// if no FlagSet name was set.
+			r = strings.TrimSpace(fmt.Sprintf("%v", r))
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
 	_, usePFlag := fs.(PFlagSet)
 
 	valT := val.Type()
 	// loop through all fields
 	for i := 0; i < val.NumField(); i++ {
 		fieldT := valT.Field(i)
-		if fieldT.PkgPath != "" {
+		isOverride := fieldT.Name == "_"
+		if fieldT.PkgPath != "" && !isOverride {
 			// unexported field
 			continue
 		}
-		tag := newFlagTag(fieldT.Tag.Get("flag"))
-		if tag.Ignored {
+		tagStr, hasTag := fieldT.Tag.Lookup("flag")
+		tag := newFlagTag(tagStr)
+		if tag.isIgnored {
 			continue
-		}
-		if !tag.ExplicitName ||
-			(usePFlag && tag.Name == tag.ShortName) {
-			// No explicit name given
-			// OR
-			// We are using pflag and the long name is the same as
-			// the short name, which is disallowed.
-			tag.Name = CamelToKebabCase(fieldT.Name)
 		}
 
 		fieldV := val.Field(i)
-		if fieldT.Type.Kind() != reflect.Ptr {
-			// The field is not a ptr, so get a ptr to it.
-			fieldV = fieldV.Addr()
+
+		// Auto populate name if needed...
+		if !tag.hasExplicitName ||
+			(usePFlag && tag.Name == tag.ShortName) {
+			// No explicit name given OR
+			// We are using pflag and the long name is the same as
+			// the short name, which is disallowed.
+			tag.Name = FromCamelCase(fieldT.Name, Separator)
 		}
-		allocateIfNil(fieldV)
-		isZero := fieldV.Elem().IsZero()
-		// Correct the fieldT.Type to refer to the underlying type.
-		fieldT.Type = fieldV.Elem().Type()
-
-		if fieldT.Type.Kind() == reflect.Struct {
-			prefix := prefix
-			if !tag.Flatten &&
-				(!fieldT.Anonymous || tag.ExplicitName) {
-				prefix += tag.Name
-			}
-			if prefix != "" && !strings.HasSuffix(prefix, "-") &&
-				!strings.HasSuffix(prefix, ".") {
-				prefix += PrefixSeparator
-			}
-			if err := BindWithPrefix(fs, fieldV.Interface(),
-				prefix); err != nil {
-				return ErrorNestedStruct{fieldT.Name, err}
-			}
-			continue
-		}
-
-		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
-
 		// Check for extended usage tags.
-		for i := i + 1; i < val.NumField(); i++ {
+		for i++; i < val.NumField(); i++ {
 			// Check if next field is named "_" and has a use tag.
 			usageT := valT.Field(i)
 			if usageT.Name != "_" {
@@ -272,6 +309,59 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
 			}
 			tag.Usage += usage
 		}
+		i--
+
+		// Flag override...
+		if isOverride {
+			if hasTag {
+				// Update flag if it exists.
+				var err error
+				switch fs := fs.(type) {
+				case STDFlagSet:
+					err = overrideSTDFlag(fs, tag)
+				case PFlagSet:
+					err = overridePFlag(fs, tag)
+				default:
+					return ErrorInvalidFlagSet
+				}
+				if err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
+		if fieldT.Type.Kind() != reflect.Ptr {
+			// The field is not a ptr, so get a ptr to it.
+			fieldV = fieldV.Addr()
+		}
+
+		allocateIfNil(fieldV)
+
+		isZero := fieldV.Elem().IsZero()
+
+		// Correct the fieldT.Type to refer to the underlying type.
+		fieldT.Type = fieldV.Elem().Type()
+
+		if fieldT.Type.Kind() == reflect.Struct {
+			prefix := prefix
+			if !tag.Flatten &&
+				(!fieldT.Anonymous || tag.hasExplicitName) {
+				prefix += tag.Name
+			}
+			if prefix != "" && !strings.HasSuffix(prefix, "-") &&
+				!strings.HasSuffix(prefix, ".") &&
+				!strings.HasSuffix(prefix, "_") {
+				prefix += Separator
+			}
+			if err := BindWithPrefix(fs, fieldV.Interface(),
+				prefix); err != nil {
+				return newErrorNestedStruct(fieldT.Name, err)
+			}
+			continue
+		}
+
+		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
 
 		var newFlag bool
 		switch fs := fs.(type) {
@@ -281,16 +371,16 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
 			newFlag = bindPFlag(
 				fs, tag, fieldV.Interface(), fieldT.Type.Name())
 		default:
-			panic("unsupported FlagSet")
+			return ErrorInvalidFlagSet
 		}
 		if !newFlag {
 			continue
 		}
 
 		// Set the tag default value, if field was zero.
-		if isZero && tag.Value != "" {
-			if err := fs.Set(tag.Name, tag.Value); err != nil {
-				return ErrorDefaultValue{fieldT.Name, tag.Value, err}
+		if isZero && tag.DefValue != "" {
+			if err := fs.Set(tag.Name, tag.DefValue); err != nil {
+				return ErrorDefaultValue{fieldT.Name, tag.DefValue, err}
 			}
 		}
 
@@ -306,7 +396,12 @@ func allocateIfNil(val reflect.Value) {
 }
 
 func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
+
 	switch p := p.(type) {
+	case flag.Value:
+		fs.Var(p, tag.Name, tag.Usage)
+	case *json.RawMessage:
+		fs.Var((*JSONRawMessage)(p), tag.Name, tag.Usage)
 	case *bool:
 		val := *p
 		fs.BoolVar(p, tag.Name, val, tag.Usage)
@@ -331,22 +426,52 @@ func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 	case *string:
 		val := *p
 		fs.StringVar(p, tag.Name, val, tag.Usage)
-	case *json.RawMessage:
-		fs.Var((*JSONRawMessage)(p), tag.Name, tag.Usage)
-	case flag.Value:
-		fs.Var(p, tag.Name, tag.Usage)
 	default:
 		return false
 	}
+
 	if tag.HideDefault {
 		f := fs.Lookup(tag.Name)
 		f.DefValue = ""
 	}
+
 	return true
+}
+func overrideSTDFlag(fs STDFlagSet, tag flagTag) error {
+
+	f := fs.Lookup(tag.Name)
+	if f == nil {
+		return ErrorFlagOverrideUndefined{tag.Name}
+	}
+
+	if tag.DefValue != "" {
+		f.Value.Set(tag.DefValue)
+		f.DefValue = tag.DefValue
+	}
+	if tag.Usage != "" {
+		f.Usage = tag.Usage
+	}
+	if tag.HideDefault {
+		f.DefValue = ""
+	}
+
+	return nil
 }
 
 func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
+
+	var f *pflag.Flag
 	switch p := p.(type) {
+	case flag.Value:
+		// Check if p also implements pflag.Value...
+		pp, ok := p.(pflag.Value)
+		if !ok {
+			// If not, use the pflagValue shim...
+			pp = pflagValue{p, typeName}
+		}
+		f = fs.VarPF(pp, tag.Name, tag.ShortName, tag.Usage)
+	case *json.RawMessage:
+		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
 	case *bool:
 		val := *p
 		fs.BoolVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
@@ -398,24 +523,43 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 	case *[]string:
 		val := *p
 		fs.StringSliceVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
-	case *json.RawMessage:
-		fs.VarP((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
-	case flag.Value:
-		// Check if p also implements pflag.Value...
-		pp, ok := p.(pflag.Value)
-		if !ok {
-			// If not, use the pflagValue shim...
-			pp = pflagValue{p, typeName}
-		}
-		fs.VarP(pp, tag.Name, tag.ShortName, tag.Usage)
 	default:
 		return false
 	}
 
-	f := fs.Lookup(tag.Name)
-	f.Hidden = tag.Hidden
+	if !(tag.HideDefault || tag.Hidden) {
+		return true
+	}
+
+	if f == nil {
+		f = fs.Lookup(tag.Name)
+	}
+
 	if tag.HideDefault {
 		f.DefValue = ""
 	}
+	f.Hidden = tag.Hidden
+
 	return true
+}
+func overridePFlag(fs PFlagSet, tag flagTag) error {
+
+	f := fs.Lookup(tag.Name)
+	if f == nil {
+		return ErrorFlagOverrideUndefined{tag.Name}
+	}
+
+	if tag.DefValue != "" {
+		f.Value.Set(tag.DefValue)
+		f.DefValue = tag.DefValue
+	}
+	if tag.Usage != "" {
+		f.Usage = tag.Usage
+	}
+	if tag.HideDefault {
+		f.DefValue = ""
+	}
+	f.Hidden = tag.Hidden
+
+	return nil
 }

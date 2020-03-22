@@ -33,6 +33,14 @@ func TestErrorDefaultValueUnwrap(t *testing.T) {
 	assert.True(t, errors.Is(err, strconv.ErrSyntax))
 }
 func TestErrorNestedStructUnwrap(t *testing.T) {
-	err := ErrorNestedStruct{"", strconv.ErrSyntax}
-	assert.True(t, errors.Is(err, strconv.ErrSyntax))
+	err := newErrorNestedStruct("C", strconv.ErrSyntax)
+	assert := assert.New(t)
+	assert.EqualError(err, "C: invalid syntax")
+
+	err = newErrorNestedStruct("B", err)
+	assert.EqualError(err, "B.C: invalid syntax")
+
+	err = newErrorNestedStruct("A", err)
+	assert.EqualError(err, "A.B.C: invalid syntax")
+	assert.True(errors.Is(err, strconv.ErrSyntax))
 }

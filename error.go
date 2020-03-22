@@ -40,6 +40,14 @@ func (err ErrorInvalidType) Error() string {
 // STDFlagSet or PFlagSet.
 var ErrorInvalidFlagSet = fmt.Errorf("flg must implement STDFlagSet or PFlagSet")
 
+func newErrorNestedStruct(fieldName string, err error) ErrorNestedStruct {
+	if err, ok := err.(ErrorNestedStruct); ok {
+		err.FieldName = fmt.Sprintf("%v.%v", fieldName, err.FieldName)
+		return err
+	}
+	return ErrorNestedStruct{fieldName, err}
+}
+
 // ErrorNestedStruct is returned from Bind if a recursive call to bind on a
 // nested struct returns an error.
 type ErrorNestedStruct struct {
@@ -74,4 +82,14 @@ func (err ErrorDefaultValue) Error() string {
 // Unwrap implements Unwrap.
 func (err ErrorDefaultValue) Unwrap() error {
 	return err.Err
+}
+
+// ErrorFlagOverrideUndefined is returned by Bind if a flag override tag is
+// defined for a FlagName that has yet to be defined in the flag set.
+type ErrorFlagOverrideUndefined struct {
+	FlagName string
+}
+
+func (err ErrorFlagOverrideUndefined) Error() string {
+	return fmt.Sprintf("cannot override undefined flag: %q", err.FlagName)
 }

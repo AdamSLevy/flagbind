@@ -24,20 +24,32 @@ import (
 	"strings"
 )
 
-// flagTag represents all possible tag settings.
 type flagTag struct {
-	ExplicitName bool
-	Name         string
-	ShortName    string
-	Value        string
-	Usage        string
+	// `flag:"<name>,<short name>"`
+	// Number int `flag:"num,n"`
+	Name            string
+	ShortName       string
+	hasExplicitName bool
+	isIgnored       bool
 
-	Ignored bool
+	// `flag:";<default value>"`
+	// Number int `flag:";5"`
+	DefValue string
 
-	HideDefault bool
-	Hidden      bool
+	// `flag:";;<usage>"`
+	// Number int `flag:";;Number of times to do"`
+	// _ struct{} `use:"something"`
+	Usage string
 
-	Flatten bool
+	// Options
+	// `flag:";;;<options>"`
+
+	// Number int `flag:";;;hide-default,hidden"`
+	HideDefault bool // `flag:";;;hide-default"`
+	Hidden      bool // `flag:";;;hidden"`
+
+	// Nested struct
+	Flatten bool // `flag:";;;flatten"`
 }
 
 // newFlagTag parses all possible tag settings.
@@ -46,8 +58,8 @@ func newFlagTag(tag string) (fTag flagTag) {
 		return
 	}
 	args := strings.Split(tag, ";")
-	fTag.Ignored = args[0] == "-"
-	if fTag.Ignored {
+	fTag.isIgnored = args[0] == "-"
+	if fTag.isIgnored {
 		return
 	}
 
@@ -56,7 +68,7 @@ func newFlagTag(tag string) (fTag flagTag) {
 		return
 	}
 
-	fTag.Value = args[1]
+	fTag.DefValue = args[1]
 	if len(args) == 2 {
 		return
 	}
@@ -83,7 +95,7 @@ func (fTag *flagTag) parseNames(name string) {
 			// Short name is too long, so censor it.
 			fTag.ShortName = ""
 		}
-		fTag.ExplicitName = fTag.Name != ""
+		fTag.hasExplicitName = fTag.Name != ""
 	}()
 	names := strings.Split(name, ",")
 	fTag.Name = strings.TrimLeft(names[0], "-")

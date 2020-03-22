@@ -24,8 +24,10 @@ import (
 	"unicode"
 )
 
-// CamelToKebabCase converts CamelCase to kebab-case. It makes a best effort at
-// respecting capitalized acronyms. For example:
+// FromCamelCase converts CamelCase to kebab-case (default), or snake_case, or
+// lowercase, depending on `sep`.
+//
+// It makes a best effort at respecting capitalized acronyms. For example:
 //
 //      camel -> camel
 //      CamelCamel -> camel-camel
@@ -35,32 +37,48 @@ import (
 //      APIURL -> apiurl
 //      ApiUrl -> api-url
 //      APIUrlID -> api-url-id
-func CamelToKebabCase(name string) string {
+func FromCamelCase(name, sep string) string {
+
 	var kebab string
 	var acronym string
 	for _, r := range name {
+
 		if unicode.IsUpper(r) {
 			acronym += string(unicode.ToLower(r))
 			continue
 		}
+
 		if len(acronym) > 1 {
+
 			if kebab != "" {
-				kebab += "-"
+				kebab += sep
 			}
-			kebab += acronym[:len(acronym)-1]       // omit last char
-			kebab += "-" + acronym[len(acronym)-1:] // add last char after -
+
+			// omit last char
+			kebab += acronym[:len(acronym)-1]
+
+			// add last char after separator
+			kebab += sep + acronym[len(acronym)-1:]
+
 			acronym = ""
+
 		} else if acronym != "" {
+
 			if kebab != "" {
-				kebab += "-"
+				kebab += sep
 			}
+
 			kebab += acronym
 			acronym = ""
+
 		}
+
 		kebab += string(r)
 	}
+
 	if kebab != "" && acronym != "" {
-		kebab += "-"
+		kebab += sep
 	}
+
 	return kebab + acronym
 }

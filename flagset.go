@@ -84,7 +84,7 @@ type PFlagSet interface {
 	UintVarP(p *uint, name, short string, value uint, usage string)
 	UintSliceVarP(p *[]uint, name, short string, value []uint, usage string)
 
-	VarP(value pflag.Value, name, short string, usage string)
+	VarPF(value pflag.Value, name, short string, usage string) *pflag.Flag
 }
 
 // Ensure we are interface compatible with flag and pflag.

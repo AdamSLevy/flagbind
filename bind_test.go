@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -159,7 +160,12 @@ type ValidTestFlags struct {
 	PtrDefaultInheritOverride *int `flag:";40"`
 
 	Nested     *StructA
-	NestedFlat StructB `flag:";;;flatten"`
+	NestedFlat StructB  `flag:";;;flatten"`
+	_          struct{} `flag:"struct-b-bool;;StructBBool"`
+	_          struct{} `use:"continued"`
+	_          struct{} `use:"twice"`
+	_          struct{} `flag:"struct-b-bool;true;;hide-default"`
+	_          struct{} `flag:"nested-struct-a-bool;true;;hidden,hide-default"`
 
 	StructA // embedded
 	StructB `flag:"embedded"`
@@ -225,12 +231,19 @@ var tests = []BindTest{
 	}, {
 		Name: "valid",
 		F: &ValidTestFlags{
-			DefaultInherit:            true,
-			DefaultInheritOverride:    43,
-			PtrDefault:                func() *int { b := 55; return &b }(),
-			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
+			DefaultInherit:         true,
+			DefaultInheritOverride: 43,
+			PtrDefault: func() *int {
+				i := 55
+				return &i
+			}(),
+			PtrDefaultInheritOverride: func() *int {
+				i := 44
+				return &i
+			}(),
 		},
-		UsageContains:    []string{"Unique usage goes here", "Extended usage"},
+		UsageContains: []string{"Unique usage goes here", "Extended usage",
+			"StructBBool continued twice"},
 		UsageNotContains: []string{"Hidden usage", "default value"},
 		ParseArgs: []string{
 			"-different-flag-name",
@@ -255,34 +268,43 @@ var tests = []BindTest{
 			"-embedded-struct-b-bool",
 		},
 		ExpF: &ValidTestFlags{
-			Default:                   true,
-			DefaultInherit:            true,
-			CustomName:                true,
-			Hidden:                    true,
-			WithDash:                  true,
-			WithTwoDash:               true,
-			AutoKebab:                 true,
-			Short:                     true,
-			ShortLong:                 true,
-			Ptr:                       func() *bool { b := false; return &b }(),
-			PtrDefault:                func() *int { b := 55; return &b }(),
-			DefaultInheritOverride:    43,
-			PtrDefaultInheritOverride: func() *int { i := 44; return &i }(),
-			Bool:                      true,
-			Int:                       4,
-			Int64:                     5,
-			Uint:                      6,
-			Uint64:                    7,
-			Float64:                   0.5,
-			Duration:                  time.Minute,
-			String:                    "string val",
-			HideDefault:               "default value",
-			Value:                     true,
-			ValueDefault:              true,
-			Nested:                    &StructA{true},
-			NestedFlat:                StructB{true},
-			StructA:                   StructA{true},
-			StructB:                   StructB{true},
+			Default:        true,
+			DefaultInherit: true,
+			CustomName:     true,
+			Hidden:         true,
+			WithDash:       true,
+			WithTwoDash:    true,
+			AutoKebab:      true,
+			Short:          true,
+			ShortLong:      true,
+			Ptr: func() *bool {
+				var b bool
+				return &b
+			}(),
+			PtrDefault: func() *int {
+				i := 55
+				return &i
+			}(),
+			DefaultInheritOverride: 43,
+			PtrDefaultInheritOverride: func() *int {
+				i := 44
+				return &i
+			}(),
+			Bool:         true,
+			Int:          4,
+			Int64:        5,
+			Uint:         6,
+			Uint64:       7,
+			Float64:      0.5,
+			Duration:     time.Minute,
+			String:       "string val",
+			HideDefault:  "default value",
+			Value:        true,
+			ValueDefault: true,
+			Nested:       &StructA{true},
+			NestedFlat:   StructB{true},
+			StructA:      StructA{true},
+			StructB:      StructB{true},
 		},
 	}, {
 		Name: "ignored",
@@ -351,5 +373,19 @@ var tests = []BindTest{
 			Value TestValue `flag:";asdf;"`
 		}{},
 		ErrBind: ErrorDefaultValue{"Value", "asdf", nil}.Error(),
+	}, {
+		Name: "ErrorFlagOverrideUndefined",
+		F: &struct {
+			_         struct{} `flag:"undefined;true"`
+			Undefined bool
+		}{},
+		ErrBind: ErrorFlagOverrideUndefined{"undefined"}.Error(),
+	}, {
+		Name: "Duplicate Flag name",
+		F: &struct {
+			Duplicate  bool
+			Duplicate_ bool `flag:"duplicate"`
+		}{},
+		ErrBind: fmt.Errorf("flag redefined: %v", "duplicate").Error(),
 	},
 }
