@@ -26,39 +26,39 @@
 //
 // Start by declaring a struct type for your flags.
 //
-//	var flags := struct {
-//		StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
-//		Int        int    `flag:"integer;5"`
+//      var flags := struct {
+//              StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
+//              Int        int    `flag:"integer;5"`
 //
-//		// Flag names default to `auto-kebab-case`
-//		AutoKebabCase int
+//              // Flag names default to `auto-kebab-case`
+//              AutoKebabCase int
 //
 //              // If pflag is used, -s is be used as the shorthand flag name,
 //              // otherwise it is ignored for use with the standard flag package.
-//		ShortName bool `flag:"short,s"`
+//              ShortName bool `flag:"short,s"`
 //
 //              // Optionally extende the usage tag with subsequent `use` tags
 //              // on _ fields.
 //              URL string `flag:"url,u;http://www.example.com/;Start usage here"
 //              _   struct{} `use:"continue longer usage string for --url below it",
 //
-//		// Nested and Embedded structs can add a flag name prefix, or not.
-//		Nested     StructA
-//		NestedFlat StructB           `flag:";;;flatten"`
-//		StructA                      // Flat by default
-//		StructB    `flag:"embedded"` // Add prefix to nested field flag names.
+//              // Nested and Embedded structs can add a flag name prefix, or not.
+//              Nested     StructA
+//              NestedFlat StructB           `flag:";;;flatten"`
+//              StructA                      // Flat by default
+//              StructB    `flag:"embedded"` // Add prefix to nested field flag names.
 //
-//		// Ignored
-//		ExplicitlyIgnored bool `flag:"-"`
-//		unexported        bool
-//	}{
-//		// Default values may also be set directly to override the tag.
-//		StringFlag: "override tag default",
-//	}
+//              // Ignored
+//              ExplicitlyIgnored bool `flag:"-"`
+//              unexported        bool
+//      }{
+//              // Default values may also be set directly to override the tag.
+//              StringFlag: "override tag default",
+//      }
 //
-//	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-//	flagbind.Bind(fs, &flags)
-//	fs.Parse([]string{"--auto-kebab-case"})
+//      fs := pflag.NewFlagSet("", pflag.ContinueOnError)
+//      flagbind.Bind(fs, &flags)
+//      fs.Parse([]string{"--auto-kebab-case"})
 //
 // Bind works seemlessly with both the standard library flag package and the
 // popular github.com/spf13/pflag package.
@@ -168,9 +168,9 @@ var Separator = "-"
 // with a single space inserted where needed.
 //
 //      type Flags struct {
-//      	URL string   `flag:"url;;Usage starts here"`
-//      	_   struct{} `use:"and continues here"`
-//      	_   struct{} `use:"and ends here."`
+//              URL string   `flag:"url;;Usage starts here"`
+//              _   struct{} `use:"and continues here"`
+//              _   struct{} `use:"and ends here."`
 //      }
 //
 //
@@ -229,9 +229,9 @@ var Separator = "-"
 // on an embedded http.Client.
 //
 //      type Flags struct {
-//      	http.Client // Defines the -timeout flag
-//      	_ struct{} `flag:"timeout;5s;HTTP request timeout"`
-//      	_ struct{} `use:"... continued usage"`
+//              http.Client // Defines the -timeout flag
+//              _ struct{} `flag:"timeout;5s;HTTP request timeout"`
+//              _ struct{} `use:"... continued usage"`
 //      }
 func Bind(fs FlagSet, v interface{}) error {
 	return BindWithPrefix(fs, v, "")
