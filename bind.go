@@ -239,7 +239,11 @@ func Bind(fs FlagSet, v interface{}) error {
 
 // BindWithPrefix is the same as Bind, but all flag names are prefixed with
 // `prefix`. Separator is NOT appended to prefix.
-func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
+func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
+	return bind(fs, v, prefix)
+}
+func bind(fs FlagSet, v interface{}, prefix string) (err error) {
+
 	ptr := reflect.ValueOf(v)
 	if ptr.Kind() != reflect.Ptr {
 		return ErrorInvalidType{v, false}
@@ -272,8 +276,8 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
 	// loop through all fields
 	for i := 0; i < val.NumField(); i++ {
 		fieldT := valT.Field(i)
-		isOverride := fieldT.Name == "_"
-		if fieldT.PkgPath != "" && !isOverride {
+		isMetadata := fieldT.Name == "_"
+		if fieldT.PkgPath != "" && !isMetadata {
 			// unexported field
 			continue
 		}
@@ -293,26 +297,14 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
 			// the short name, which is disallowed.
 			tag.Name = FromCamelCase(fieldT.Name, Separator)
 		}
+
+		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
+
 		// Check for extended usage tags.
-		for i++; i < val.NumField(); i++ {
-			// Check if next field is named "_" and has a use tag.
-			usageT := valT.Field(i)
-			if usageT.Name != "_" {
-				break
-			}
-			usage, ok := usageT.Tag.Lookup("use")
-			if !ok {
-				break
-			}
-			if tag.Usage != "" {
-				tag.Usage += " "
-			}
-			tag.Usage += usage
-		}
-		i--
+		i = loadExtendedUsage(i, valT, &tag)
 
 		// Flag override...
-		if isOverride {
+		if isMetadata {
 			if hasTag {
 				// Update flag if it exists.
 				var err error
@@ -343,25 +335,23 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
 		// Correct the fieldT.Type to refer to the underlying type.
 		fieldT.Type = fieldV.Elem().Type()
 
-		if fieldT.Type.Kind() == reflect.Struct {
+		_, isFlagValue := fieldV.Interface().(flag.Value)
+
+		if !isFlagValue &&
+			fieldT.Type.Kind() == reflect.Struct {
 			prefix := prefix
 			if !tag.Flatten &&
 				(!fieldT.Anonymous || tag.hasExplicitName) {
 				prefix += tag.Name
 			}
-			if prefix != "" && !strings.HasSuffix(prefix, "-") &&
-				!strings.HasSuffix(prefix, ".") &&
-				!strings.HasSuffix(prefix, "_") {
-				prefix += Separator
-			}
+			prefix = addPrefixSeparator(prefix)
+
 			if err := BindWithPrefix(fs, fieldV.Interface(),
-				prefix); err != nil {
+				addPrefixSeparator(prefix)); err != nil {
 				return newErrorNestedStruct(fieldT.Name, err)
 			}
 			continue
 		}
-
-		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
 
 		var newFlag bool
 		switch fs := fs.(type) {
@@ -387,6 +377,36 @@ func BindWithPrefix(fs FlagSet, v interface{}, prefix string) (err error) {
 	}
 
 	return nil
+}
+
+func loadExtendedUsage(i int, valT reflect.Type, tag *flagTag) int {
+	// Check for extended usage tags.
+	for i++; i < valT.NumField(); i++ {
+		// Check if next field is named "_" and has a use tag.
+		usageT := valT.Field(i)
+		if usageT.Name != "_" {
+			break
+		}
+		usage, ok := usageT.Tag.Lookup("use")
+		if !ok {
+			break
+		}
+		if tag.Usage != "" {
+			tag.Usage += " "
+		}
+		tag.Usage += usage
+	}
+	i--
+	return i
+}
+
+func addPrefixSeparator(prefix string) string {
+	if prefix != "" && !strings.HasSuffix(prefix, "-") &&
+		!strings.HasSuffix(prefix, ".") &&
+		!strings.HasSuffix(prefix, "_") {
+		prefix += Separator
+	}
+	return prefix
 }
 
 func allocateIfNil(val reflect.Value) {

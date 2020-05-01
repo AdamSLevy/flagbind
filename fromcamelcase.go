@@ -24,8 +24,8 @@ import (
 	"unicode"
 )
 
-// FromCamelCase converts CamelCase to kebab-case (default), or snake_case, or
-// lowercase, depending on `sep`.
+// FromCamelCase converts CamelCase to kebab-case, or snake_case, or lowercase,
+// depending on `sep`.
 //
 // It makes a best effort at respecting capitalized acronyms. For example:
 //

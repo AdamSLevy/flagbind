@@ -21,6 +21,7 @@
 package flagbind
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -111,4 +112,28 @@ func (fTag *flagTag) parseOptions(opts string) {
 	fTag.Hidden = strings.Contains(opts, "hidden")
 	fTag.HideDefault = strings.Contains(opts, "hide-default")
 	fTag.Flatten = strings.Contains(opts, "flatten")
+}
+
+func toFlagList(flaglist *map[string]struct{}, tagVal string) error {
+
+	if tagVal == "" {
+		return nil
+	}
+
+	wl := strings.Split(tagVal, ",")
+
+	if *flaglist == nil {
+		*flaglist = make(map[string]struct{}, len(wl))
+	}
+
+	for _, name := range wl {
+		name = strings.TrimSpace(name)
+		name = strings.TrimLeft(name, "-")
+		if strings.Contains(name, " ") {
+			return fmt.Errorf("invalid flag name: %q", name)
+		}
+		(*flaglist)[name] = struct{}{}
+	}
+
+	return nil
 }

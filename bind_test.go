@@ -68,13 +68,16 @@ func (test *BindTest) Run(t *testing.T) {
 
 // test runs a single test t.
 func (test *BindTest) test(t *testing.T) {
+
 	assert := assert.New(t)
 	require := require.New(t)
+
 	var flg interface {
 		FlagSet
 		SetOutput(io.Writer)
 		Usage() string
 	}
+
 	args := test.ParseArgs
 	if test.UsePFlag {
 		flg = pflagSetUsage{pflag.NewFlagSet("", pflag.ContinueOnError)}
