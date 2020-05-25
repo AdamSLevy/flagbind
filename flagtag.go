@@ -21,7 +21,6 @@
 package flagbind
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -30,8 +29,8 @@ type flagTag struct {
 	// Number int `flag:"num,n"`
 	Name            string
 	ShortName       string
-	hasExplicitName bool
-	isIgnored       bool
+	HasExplicitName bool
+	IsIgnored       bool
 
 	// `flag:";<default value>"`
 	// Number int `flag:";5"`
@@ -59,8 +58,8 @@ func newFlagTag(tag string) (fTag flagTag) {
 		return
 	}
 	args := strings.Split(tag, ";")
-	fTag.isIgnored = args[0] == "-"
-	if fTag.isIgnored {
+	fTag.IsIgnored = args[0] == "-"
+	if fTag.IsIgnored {
 		return
 	}
 
@@ -83,57 +82,38 @@ func newFlagTag(tag string) (fTag flagTag) {
 	return
 }
 
-// parseNames parses and sorts long and short flag names
+// parseNames parses and sorts the long and short flag names.
 func (fTag *flagTag) parseNames(name string) {
-	defer func() {
-		if len(fTag.Name) < len(fTag.ShortName) { // ensure Name is longer
-			fTag.Name, fTag.ShortName = fTag.ShortName, fTag.Name
-		}
-		if len(fTag.Name) == 1 {
-			// If Name qualifies as short, override ShortName.
-			fTag.ShortName = fTag.Name
-		} else if len(fTag.ShortName) > 1 {
-			// Short name is too long, so censor it.
-			fTag.ShortName = ""
-		}
-		fTag.hasExplicitName = fTag.Name != ""
-	}()
+
 	names := strings.Split(name, ",")
+
 	fTag.Name = strings.TrimLeft(names[0], "-")
-	if len(names) == 1 {
-		return
+	if len(names) > 1 {
+		fTag.ShortName = strings.TrimLeft(names[1], "-")
 	}
-	fTag.ShortName = strings.TrimLeft(names[1], "-")
-	return
+
+	// Ensure Name is longer than ShortName.
+	if len(fTag.Name) < len(fTag.ShortName) {
+		fTag.Name, fTag.ShortName = fTag.ShortName, fTag.Name
+	}
+
+	// If short name is too long, censor it.
+	if len(fTag.ShortName) > 1 {
+		fTag.ShortName = ""
+	}
+
+	// If Name qualifies as short, override ShortName.
+	if len(fTag.Name) == 1 {
+		fTag.ShortName = fTag.Name
+	}
+
+	fTag.HasExplicitName = fTag.Name != ""
 }
 
+// parseOptions parses the hidden, hide-default, and flatten options.
 func (fTag *flagTag) parseOptions(opts string) {
 	opts = strings.ToLower(opts)
 	fTag.Hidden = strings.Contains(opts, "hidden")
 	fTag.HideDefault = strings.Contains(opts, "hide-default")
 	fTag.Flatten = strings.Contains(opts, "flatten")
-}
-
-func toFlagList(flaglist *map[string]struct{}, tagVal string) error {
-
-	if tagVal == "" {
-		return nil
-	}
-
-	wl := strings.Split(tagVal, ",")
-
-	if *flaglist == nil {
-		*flaglist = make(map[string]struct{}, len(wl))
-	}
-
-	for _, name := range wl {
-		name = strings.TrimSpace(name)
-		name = strings.TrimLeft(name, "-")
-		if strings.Contains(name, " ") {
-			return fmt.Errorf("invalid flag name: %q", name)
-		}
-		(*flaglist)[name] = struct{}{}
-	}
-
-	return nil
 }

@@ -31,7 +31,7 @@ type ErrorInvalidType struct {
 // Error implements error.
 func (err ErrorInvalidType) Error() string {
 	if err.Nil {
-		fmt.Sprintf("cannot bind flags to nil %T", err.Type)
+		return fmt.Sprintf("cannot bind flags to nil %T", err.Type)
 	}
 	return fmt.Sprintf("type %T is not a struct pointer", err.Type)
 }

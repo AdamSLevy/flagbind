@@ -198,12 +198,21 @@ type ValidTestFlags struct {
 	Unsupported UnsupportedType
 
 	ExportedInterface interface{}
+
+	custom bool
+}
+
+func (v *ValidTestFlags) FlagBind(fs FlagSet, prefix string) error {
+	fs.BoolVar(&v.custom, prefix+"custom", false, "")
+	type _ValidTestFlags ValidTestFlags
+	return BindWithPrefix(fs, (*_ValidTestFlags)(v), prefix)
 }
 
 type UnsupportedType int
 
 type StructA struct {
 	StructABool bool
+	custom      bool
 }
 type StructB struct {
 	StructBBool bool
@@ -225,12 +234,16 @@ var tests = []BindTest{
 		F:       new(int),
 		ErrBind: ErrorInvalidType{new(int), false}.Error(),
 	}, {
+		Name:    "ErrorInvalidType_int_ptr",
+		F:       new(int),
+		ErrBind: ErrorInvalidType{new(int), false}.Error(),
+	}, {
 		Name:    "ErrorInvalidType_nil",
 		ErrBind: ErrorInvalidType{nil, false}.Error(),
 	}, {
 		Name:    "ErrorInvalidType_*struct{}(nil)",
 		F:       (*struct{})(nil),
-		ErrBind: ErrorInvalidType{(*struct{})(nil), false}.Error(),
+		ErrBind: ErrorInvalidType{(*struct{})(nil), true}.Error(),
 	}, {
 		Name: "valid",
 		F: &ValidTestFlags{
@@ -304,9 +317,9 @@ var tests = []BindTest{
 			HideDefault:  "default value",
 			Value:        true,
 			ValueDefault: true,
-			Nested:       &StructA{true},
+			Nested:       &StructA{true, false},
 			NestedFlat:   StructB{true},
-			StructA:      StructA{true},
+			StructA:      StructA{true, false},
 			StructB:      StructB{true},
 		},
 	}, {
