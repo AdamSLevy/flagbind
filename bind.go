@@ -331,6 +331,8 @@ func bind(fs FlagSet, v interface{}, prefix string) (err error) {
 
 	valT := val.Type()
 
+	defaults := make(map[string]string)
+
 	// loop through all fields
 	for i := 0; i < val.NumField(); i++ {
 
@@ -439,13 +441,39 @@ func bind(fs FlagSet, v interface{}, prefix string) (err error) {
 		// If field value was zero, then set the tag default, if
 		// specified.
 		if fieldV.Elem().IsZero() && tag.DefValue != "" {
+			defaults[tag.Name] = tag.DefValue
 			if err := fs.Set(tag.Name, tag.DefValue); err != nil {
 				return ErrorDefaultValue{structField.Name, tag.DefValue, err}
 			}
 		}
 	}
 
+	return setDefaults(fs, defaults)
+}
+
+func setDefaults(fs FlagSet, defaults map[string]string) error {
+	switch fs := fs.(type) {
+	case STDFlagSet:
+		fs.VisitAll(func(f *flag.Flag) {
+			defVal, ok := defaults[f.Name]
+			if !ok {
+				return
+			}
+			f.DefValue = defVal
+		})
+	case PFlagSet:
+		fs.VisitAll(func(f *pflag.Flag) {
+			defVal, ok := defaults[f.Name]
+			if !ok {
+				return
+			}
+			f.DefValue = defVal
+		})
+	default:
+		return ErrorInvalidFlagSet
+	}
 	return nil
+
 }
 
 func loadExtendedUsage(i int, valT reflect.Type, tag *flagTag) int {

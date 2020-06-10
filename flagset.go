@@ -52,6 +52,8 @@ type STDFlagSet interface {
 	FlagSet
 	Lookup(name string) *flag.Flag
 	Var(value flag.Value, name string, usage string)
+	Visit(func(*flag.Flag))
+	VisitAll(func(*flag.Flag))
 }
 
 // PFlagSet is an interface satisfied by *pflag.FlagSet.
@@ -85,6 +87,9 @@ type PFlagSet interface {
 	UintSliceVarP(p *[]uint, name, short string, value []uint, usage string)
 
 	VarPF(value pflag.Value, name, short string, usage string) *pflag.Flag
+
+	Visit(func(*pflag.Flag))
+	VisitAll(func(*pflag.Flag))
 }
 
 // Ensure we are interface compatible with flag and pflag.
