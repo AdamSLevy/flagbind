@@ -110,10 +110,13 @@ var Separator = "-"
 // `fs` to avoid potential flag name conflicts and allow more portable
 // implementations.
 //
+// Additionally the opt should be passed down to Bind to preserve original opts
+// if called again by the implementation.
+//
 // The underlying type of `fs` is the same as the original FlagSet passed to
 // Bind.
 type Binder interface {
-	FlagBind(fs FlagSet, prefix string) error
+	FlagBind(fs FlagSet, prefix string, opt Option) error
 }
 
 // Bind the exported fields of struct `v` to new flags in the FlagSet `fs`.
@@ -280,20 +283,15 @@ type Binder interface {
 //              _ struct{} `flag:"timeout;5s;HTTP request timeout"`
 //              _ struct{} `use:"... continued usage"`
 //      }
-func Bind(fs FlagSet, v interface{}) error {
-	return BindWithPrefix(fs, v, "")
+func Bind(fs FlagSet, v interface{}, opts ...Option) error {
+	return newBind(opts...).bind(fs, v)
 }
 
-// BindWithPrefix is the same as Bind, but all flag names are prefixed with
-// `prefix`. Separator is NOT appended to prefix.
-func BindWithPrefix(fs FlagSet, v interface{}, prefix string) error {
-	return bind(fs, v, prefix)
-}
-func bind(fs FlagSet, v interface{}, prefix string) (err error) {
+func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 
 	// Hand control over to the Binder implementation.
 	if binder, ok := v.(Binder); ok {
-		return binder.FlagBind(fs, prefix)
+		return binder.FlagBind(fs, b.Prefix, b.Option())
 	}
 
 	// Ensure we have a non-nil pointer.
@@ -364,7 +362,7 @@ func bind(fs FlagSet, v interface{}, prefix string) (err error) {
 			tag.Name = FromCamelCase(structField.Name, Separator)
 		}
 
-		tag.Name = fmt.Sprintf("%v%v", prefix, tag.Name)
+		tag.Name = fmt.Sprintf("%v%v", b.Prefix, tag.Name)
 
 		fieldV := val.Field(i)
 
@@ -401,8 +399,8 @@ func bind(fs FlagSet, v interface{}, prefix string) (err error) {
 
 		isStruct := fieldT.Kind() == reflect.Struct
 
-		// If the field implements Binder, we call BindWithPrefix on
-		// the field, which will call its Binder implementation.
+		// If the field implements Binder, we call Bind on the field,
+		// which will call its Binder implementation.
 		//
 		// If the field is a struct, and does not implement flag.Value,
 		// we will recursively call BindWithPrefix.
@@ -412,19 +410,21 @@ func bind(fs FlagSet, v interface{}, prefix string) (err error) {
 		if isBinder || (!isFlagValue && isStruct) {
 
 			// Set prefix up to this point.
-			prefix := prefix
+			b := b
 
-			// If the nested field is not flattened explicitly and
-			// is not anonymous (embedded) or has an explicit name,
+			// If the nested field is not explicitly flattened AND
+			// ( auto flattening is disabled OR the field is not
+			// anonymous (embedded) OR has an explicit name ),
 			// then grow the prefix.
 			if !tag.Flatten &&
-				(!structField.Anonymous || tag.HasExplicitName) {
-				prefix += tag.Name
+				(b.NoAutoFlatten ||
+					!structField.Anonymous || tag.HasExplicitName) {
+				b.Prefix += tag.Name
 			}
 
-			prefix = appendSeparator(prefix)
+			b.Prefix = appendSeparator(b.Prefix)
 
-			if err := BindWithPrefix(fs, fieldI, prefix); err != nil {
+			if err := b.bind(fs, fieldI); err != nil {
 				return newErrorNestedStruct(structField.Name, err)
 			}
 			continue

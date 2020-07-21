@@ -26,6 +26,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"testing"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 type BindTest struct {
 	Name     string
 	UsePFlag bool
+	Opts     []Option
 
 	// F is the *struct{} to bind flags to.
 	F       interface{}
@@ -95,7 +97,7 @@ func (test *BindTest) test(t *testing.T) {
 	usageOutput := bytes.NewBuffer(nil)
 	flg.SetOutput(usageOutput)
 
-	err := Bind(flg, test.F)
+	err := Bind(flg, test.F, test.Opts...)
 
 	if test.ErrBind != "" {
 		assert.EqualError(err, test.ErrBind, "Bind()")
@@ -107,6 +109,7 @@ func (test *BindTest) test(t *testing.T) {
 	for _, use := range test.UsageContains {
 		assert.Contains(usage, use, "flag.FlagSet.Usage()")
 	}
+	//fmt.Println(usage)
 	if test.UsePFlag {
 		for _, use := range test.UsageNotContains {
 			assert.NotContains(usage, use, "flag.FlagSet.Usage()")
@@ -202,11 +205,13 @@ type ValidTestFlags struct {
 	custom bool
 }
 
-func (v *ValidTestFlags) FlagBind(fs FlagSet, prefix string) error {
+func (v *ValidTestFlags) FlagBind(fs FlagSet, prefix string, opt Option) error {
 	fs.BoolVar(&v.custom, prefix+"custom", false, "")
 	type _ValidTestFlags ValidTestFlags
-	return BindWithPrefix(fs, (*_ValidTestFlags)(v), prefix)
+	return Bind(fs, (*_ValidTestFlags)(v), opt)
 }
+
+var _ Binder = &ValidTestFlags{}
 
 type UnsupportedType int
 
@@ -282,6 +287,7 @@ var tests = []BindTest{
 			"-struct-b-bool",
 			"-nested-struct-a-bool",
 			"-embedded-struct-b-bool",
+			"-custom",
 		},
 		ExpF: &ValidTestFlags{
 			Default:        true,
@@ -321,6 +327,7 @@ var tests = []BindTest{
 			NestedFlat:   StructB{true},
 			StructA:      StructA{true, false},
 			StructB:      StructB{true},
+			custom:       true,
 		},
 	}, {
 		Name: "ignored",
@@ -403,5 +410,29 @@ var tests = []BindTest{
 			Duplicate_ bool `flag:"duplicate"`
 		}{},
 		ErrBind: fmt.Errorf("flag redefined: %v", "duplicate").Error(),
+	}, {
+		Name: "NoAutoFlatten",
+		Opts: []Option{NoAutoFlatten()},
+		F: &struct {
+			http.Client
+		}{},
+		ParseArgs: []string{
+			"-client-timeout=5s",
+		},
+		ExpF: &struct {
+			http.Client
+		}{http.Client{Timeout: 5 * time.Second}},
+	}, {
+		Name: "Prefix",
+		Opts: []Option{Prefix("http-")},
+		F: &struct {
+			http.Client
+		}{},
+		ParseArgs: []string{
+			"-http-timeout=5s",
+		},
+		ExpF: &struct {
+			http.Client
+		}{http.Client{Timeout: 5 * time.Second}},
 	},
 }
