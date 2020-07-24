@@ -93,6 +93,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -396,6 +397,9 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 		_, isBinder := fieldI.(Binder)
 
 		_, isFlagValue := fieldI.(flag.Value)
+		_, isJSONRawMessage := fieldI.(*json.RawMessage)
+		_, isURL := fieldI.(*url.URL)
+		isFlagValue = isFlagValue || isJSONRawMessage || isURL
 
 		isStruct := fieldT.Kind() == reflect.Struct
 
@@ -530,6 +534,8 @@ func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 		fs.Var(p, tag.Name, tag.Usage)
 	case *json.RawMessage:
 		fs.Var((*JSONRawMessage)(p), tag.Name, tag.Usage)
+	case *url.URL:
+		fs.Var((*URL)(p), tag.Name, tag.Usage)
 	case *bool:
 		val := *p
 		fs.BoolVar(p, tag.Name, val, tag.Usage)
@@ -580,6 +586,8 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 		f = fs.VarPF(pp, tag.Name, tag.ShortName, tag.Usage)
 	case *json.RawMessage:
 		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
+	case *url.URL:
+		f = fs.VarPF((*URL)(p), tag.Name, tag.ShortName, tag.Usage)
 	case *bool:
 		val := *p
 		fs.BoolVarP(p, tag.Name, tag.ShortName, val, tag.Usage)

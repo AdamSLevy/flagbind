@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -202,6 +203,9 @@ type ValidTestFlags struct {
 
 	ExportedInterface interface{}
 
+	CustomURLPtr *url.URL
+	CustomURL    url.URL
+
 	custom bool
 }
 
@@ -287,6 +291,10 @@ var tests = []BindTest{
 			"-struct-b-bool",
 			"-nested-struct-a-bool",
 			"-embedded-struct-b-bool",
+			"-custom-url",
+			"http://example.com",
+			"-custom-url-ptr",
+			"http://example.com",
 			"-custom",
 		},
 		ExpF: &ValidTestFlags{
@@ -327,6 +335,11 @@ var tests = []BindTest{
 			NestedFlat:   StructB{true},
 			StructA:      StructA{true, false},
 			StructB:      StructB{true},
+			CustomURL: func() url.URL {
+				u := mustParseURL("http://example.com")
+				return *u
+			}(),
+			CustomURLPtr: mustParseURL("http://example.com"),
 			custom:       true,
 		},
 	}, {
@@ -435,4 +448,12 @@ var tests = []BindTest{
 			http.Client
 		}{http.Client{Timeout: 5 * time.Second}},
 	},
+}
+
+func mustParseURL(rawurl string) *url.URL {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		panic(err)
+	}
+	return u
 }
