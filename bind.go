@@ -363,8 +363,6 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 			tag.Name = FromCamelCase(structField.Name, Separator)
 		}
 
-		tag.Name = fmt.Sprintf("%v%v", b.Prefix, tag.Name)
-
 		fieldV := val.Field(i)
 
 		i = loadExtendedUsage(i, valT, &tag)
@@ -399,7 +397,7 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 		_, isFlagValue := fieldI.(flag.Value)
 		_, isJSONRawMessage := fieldI.(*json.RawMessage)
 		_, isURL := fieldI.(*url.URL)
-		isFlagValue = isFlagValue || isJSONRawMessage || isURL
+		noDive := isFlagValue || isJSONRawMessage || isURL
 
 		isStruct := fieldT.Kind() == reflect.Struct
 
@@ -410,8 +408,8 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 		// we will recursively call BindWithPrefix.
 		//
 		// Otherwise, if the field implements flag.Value or any other
-		// type, we will bind the field directly below.
-		if isBinder || (!isFlagValue && isStruct) {
+		// type supported, we will bind the field directly below.
+		if isBinder || (!noDive && isStruct) {
 
 			// Set prefix up to this point.
 			b := b
@@ -433,6 +431,8 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 			}
 			continue
 		}
+
+		tag.Name = fmt.Sprintf("%v%v", b.Prefix, tag.Name)
 
 		newFlag, err := bindField(fs, tag, fieldI, fieldT.Name())
 		if err != nil {
