@@ -26,6 +26,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"testing"
@@ -189,6 +190,9 @@ type ValidTestFlags struct {
 	String       string
 	Value        TestValue
 	ValueDefault TestValue `flag:";true;"`
+
+	IP  net.IP
+	IPs []net.IP
 
 	BoolS     []bool
 	IntS      []int

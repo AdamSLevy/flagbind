@@ -93,6 +93,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/url"
 	"reflect"
 	"strings"
@@ -588,6 +589,12 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
 	case *url.URL:
 		f = fs.VarPF((*URL)(p), tag.Name, tag.ShortName, tag.Usage)
+	case *net.IP:
+		val := *p
+		fs.IPVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
+	case *[]net.IP:
+		val := *p
+		fs.IPSliceVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
 	case *bool:
 		val := *p
 		fs.BoolVarP(p, tag.Name, tag.ShortName, val, tag.Usage)

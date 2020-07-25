@@ -22,6 +22,7 @@ package flagbind
 
 import (
 	"flag"
+	"net"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -85,6 +86,9 @@ type PFlagSet interface {
 
 	UintVarP(p *uint, name, short string, value uint, usage string)
 	UintSliceVarP(p *[]uint, name, short string, value []uint, usage string)
+
+	IPVarP(p *net.IP, name, shorthand string, value net.IP, usage string)
+	IPSliceVarP(p *[]net.IP, name, shorthand string, value []net.IP, usage string)
 
 	VarPF(value pflag.Value, name, short string, usage string) *pflag.Flag
 
