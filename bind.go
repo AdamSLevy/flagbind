@@ -99,6 +99,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -289,6 +290,19 @@ func Bind(fs FlagSet, v interface{}, opts ...Option) error {
 	return newBind(opts...).bind(fs, v)
 }
 
+func BindCobra(cmd *cobra.Command, v interface{}, opts ...Option) (err error) {
+	if err = newBind(append(opts, CobraFilter("persistent"))...).bind(cmd.PersistentFlags(), v); err != nil {
+		return err
+	}
+	if err = newBind(append(opts, CobraFilter("local"))...).bind(cmd.LocalFlags(), v); err != nil {
+		return err
+	}
+	if err = newBind(append(opts, CobraFilter("flags"))...).bind(cmd.Flags(), v); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 
 	// Hand control over to the Binder implementation.
@@ -353,7 +367,7 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 		tagStr, hasTag := structField.Tag.Lookup("flag")
 		tag := newFlagTag(tagStr)
 
-		if tag.IsIgnored {
+		if b.IsIgnored(tag) {
 			continue
 		}
 
@@ -584,6 +598,7 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 			// If not, use the pflagValue shim...
 			pp = pflagValue{p, typeName}
 		}
+
 		f = fs.VarPF(pp, tag.Name, tag.ShortName, tag.Usage)
 	case *json.RawMessage:
 		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)

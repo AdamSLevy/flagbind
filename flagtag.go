@@ -50,6 +50,11 @@ type flagTag struct {
 
 	// Nested struct
 	Flatten bool // `flag:";;;flatten"`
+
+	// Nested struct
+	Persistent bool // `flag:";;;persistent"`
+	Local      bool // `flag:";;;local"`
+	Flags      bool // `flag:";;;flags"`
 }
 
 // newFlagTag parses all possible tag settings.
@@ -115,5 +120,14 @@ func (fTag *flagTag) parseOptions(opts string) {
 	opts = strings.ToLower(opts)
 	fTag.Hidden = strings.Contains(opts, "hidden")
 	fTag.HideDefault = strings.Contains(opts, "hide-default")
-	fTag.Flatten = strings.Contains(opts, "flatten")
+	switch {
+	case strings.Contains(opts, "persistent"):
+		fTag.Persistent = true
+	case strings.Contains(opts, "local"):
+		fTag.Local = true
+	case strings.Contains(opts, "flags"):
+		fallthrough
+	default:
+		fTag.Flags = true
+	}
 }

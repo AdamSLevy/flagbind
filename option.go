@@ -11,6 +11,7 @@ func newBind(opts ...Option) bind {
 type bind struct {
 	Prefix        string
 	NoAutoFlatten bool
+	CobraFilter   string
 }
 
 func (b bind) Option() Option {
@@ -19,8 +20,31 @@ func (b bind) Option() Option {
 	}
 }
 
+func (b bind) IsIgnored(tag flagTag) bool {
+	if tag.IsIgnored {
+		return true
+	}
+
+	switch b.CobraFilter {
+	case "persistent":
+		return !tag.Persistent
+	case "local":
+		return !tag.Local
+	case "flags":
+		fallthrough
+	default:
+		return !tag.Flags
+	}
+}
+
 // Option is an option that may be passed to Bind.
 type Option func(*bind)
+
+func CobraFilter(name string) Option {
+	return func(b *bind) {
+		b.CobraFilter = name
+	}
+}
 
 // Prefix all flag names with prefix, which should include any final separator
 // (e.g. 'http-' or 'http.')
