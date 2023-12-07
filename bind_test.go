@@ -23,6 +23,7 @@ package flagbind
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -190,6 +191,7 @@ type ValidTestFlags struct {
 	String       string
 	Value        TestValue
 	ValueDefault TestValue `flag:";true;"`
+	Marshaler    TestTextMarshaler
 
 	IP  net.IP
 	IPs []net.IP
@@ -451,6 +453,27 @@ var tests = []BindTest{
 		ExpF: &struct {
 			http.Client
 		}{http.Client{Timeout: 5 * time.Second}},
+	}, {
+		Name: "Marshaler",
+		F: &struct {
+			E TestTextMarshaler `flag:"marshaler"`
+		}{},
+		ExpF: &struct {
+			E TestTextMarshaler `flag:"marshaler"`
+		}{E: TestTextMarshaler{v: "value"}},
+		ParseArgs: []string{
+			`-marshaler`, `value`,
+		},
+	}, {
+		Name: "Marshaler error",
+		F: &struct {
+			E TestTextMarshaler `flag:"marshaler"`
+		}{E: TestTextMarshaler{err: errors.New("bad")}},
+		ParseArgs: []string{
+			`-marshaler`, `value`,
+		},
+		ErrParse:      `invalid value "value" for flag -marshaler: bad`,
+		ErrPFlagParse: `invalid argument "value" for "--marshaler" flag: bad`,
 	},
 }
 
