@@ -398,7 +398,8 @@ func (b bind) bind(fs FlagSet, v interface{}) (err error) {
 		_, isFlagValue := fieldI.(flag.Value)
 		_, isJSONRawMessage := fieldI.(*json.RawMessage)
 		_, isURL := fieldI.(*url.URL)
-		noDive := isFlagValue || isJSONRawMessage || isURL
+		_, isMarshaler := fieldI.(textBidiMarshaler)
+		noDive := isFlagValue || isJSONRawMessage || isURL || isMarshaler
 
 		isStruct := fieldT.Kind() == reflect.Struct
 
@@ -528,11 +529,13 @@ func bindField(fs FlagSet, tag flagTag, p interface{}, typeName string) (bool, e
 		return false, ErrorInvalidFlagSet
 	}
 }
-func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 
+func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 	switch p := p.(type) {
 	case flag.Value:
 		fs.Var(p, tag.Name, tag.Usage)
+	case textBidiMarshaler:
+		fs.Var(&pflagMarshalerValue{p, ""}, tag.Name, tag.Usage)
 	case *json.RawMessage:
 		fs.Var((*JSONRawMessage)(p), tag.Name, tag.Usage)
 	case *url.URL:
@@ -585,6 +588,8 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 			pp = pflagValue{p, typeName}
 		}
 		f = fs.VarPF(pp, tag.Name, tag.ShortName, tag.Usage)
+	case textBidiMarshaler:
+		fs.VarPF(&pflagMarshalerValue{p, typeName}, tag.Name, tag.ShortName, tag.Usage)
 	case *json.RawMessage:
 		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
 	case *url.URL:
