@@ -48,45 +48,43 @@
 // type name of the flag.Value is used as the return value of the additional
 // `Type() string` function required by the pflag.Value interface.
 //
-//
-// Getting Started
+// # Getting Started
 //
 // Start by declaring a struct type for your flags.
 //
-//      var flags := struct {
-//              StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
-//              Int        int    `flag:"integer;5"`
+//	var flags := struct {
+//	        StringFlag string `flag:"flag-name;default value;Usage for string-flag"`
+//	        Int        int    `flag:"integer;5"`
 //
-//              // Flag names default to `auto-kebab-case`
-//              AutoKebabCase int
+//	        // Flag names default to `auto-kebab-case`
+//	        AutoKebabCase int
 //
-//              // If pflag is used, -s is be used as the shorthand flag name,
-//              // otherwise it is ignored for use with the standard flag package.
-//              ShortName bool `flag:"short,s"`
+//	        // If pflag is used, -s is be used as the shorthand flag name,
+//	        // otherwise it is ignored for use with the standard flag package.
+//	        ShortName bool `flag:"short,s"`
 //
-//              // Optionally extende the usage tag with subsequent `use` tags
-//              // on _ fields.
-//              URL string `flag:"url,u;http://www.example.com/;Start usage here"
-//              _   struct{} `use:"continue longer usage string for --url below it",
+//	        // Optionally extende the usage tag with subsequent `use` tags
+//	        // on _ fields.
+//	        URL string `flag:"url,u;http://www.example.com/;Start usage here"
+//	        _   struct{} `use:"continue longer usage string for --url below it",
 //
-//              // Nested and Embedded structs can add a flag name prefix, or not.
-//              Nested     StructA
-//              NestedFlat StructB           `flag:";;;flatten"`
-//              StructA                      // Flat by default
-//              StructB    `flag:"embedded"` // Add prefix to nested field flag names.
+//	        // Nested and Embedded structs can add a flag name prefix, or not.
+//	        Nested     StructA
+//	        NestedFlat StructB           `flag:";;;flatten"`
+//	        StructA                      // Flat by default
+//	        StructB    `flag:"embedded"` // Add prefix to nested field flag names.
 //
-//              // Ignored
-//              ExplicitlyIgnored bool `flag:"-"`
-//              unexported        bool
-//      }{
-//              // Default values may also be set directly to override the tag.
-//              StringFlag: "override tag default",
-//      }
+//	        // Ignored
+//	        ExplicitlyIgnored bool `flag:"-"`
+//	        unexported        bool
+//	}{
+//	        // Default values may also be set directly to override the tag.
+//	        StringFlag: "override tag default",
+//	}
 //
-//      fs := pflag.NewFlagSet("", pflag.ContinueOnError)
-//      flagbind.Bind(fs, &flags)
-//      fs.Parse([]string{"--auto-kebab-case"})
-//
+//	fs := pflag.NewFlagSet("", pflag.ContinueOnError)
+//	flagbind.Bind(fs, &flags)
+//	fs.Parse([]string{"--auto-kebab-case"})
 package flagbind
 
 import (
@@ -153,24 +151,21 @@ type Binder interface {
 // Additionally, a json.RawMessage is also natively supported and is bound as a
 // JSONRawMessage flag.
 //
-//
-// Ignoring a Field
+// # Ignoring a Field
 //
 // Use the tag `flag:"-"` to prevent an exported field from being bound to any
 // flag. If the field is a nested or embedded struct then its fields are also
 // ignored.
 //
-//
-// Flag Tag Settings
+// # Flag Tag Settings
 //
 // The flag settings for a particular field can be customized using a struct
 // field tag of the form:
 //
-//      `flag:"[<long>][,<short>][;<default>[;<usage>[;<options>]]]"`
+//	`flag:"[<long>][,<short>][;<default>[;<usage>[;<options>]]]"`
 //
 // The tag and all of its settings are [optional]. Semi-colons are used to
 // distinguish subsequent settings.
-//
 //
 // <long>[,<short>] - Explicitly set the long and short names of the flag. All
 // leading dashes are trimmed from both names. The two names are sorted for
@@ -190,43 +185,38 @@ type Binder interface {
 // set (see below), then the name is used as a prefix for all nested field flag
 // names.
 //
-//
 // <default> - Bind attempts to parse <default> as the field's default, just
 // like it would be parsed as a flag. Non-zero field values override this as
 // the default.
 //
-//
 // <usage> - The usage string for the flag. See Extended Usage below for a way
 // to break longer usage strings across multiple lines.
 //
-//
 // <options> - A comma separated list of additional options for the flag.
 //
-//      hide-default - Do not print the default value of this flag in the usage
-//      output.
+//	hide-default - Do not print the default value of this flag in the usage
+//	output.
 //
-//      hidden - (PFlagSet only) Do not show this flag in the usage output.
+//	hidden - (PFlagSet only) Do not show this flag in the usage output.
 //
-//      flatten - (Nested/embedded structs only) Do not prefix the name of the
-//      struct to the names of its fields. This overrides any explicit name on
-//      an embedded struct which would otherwise unflatten it.
+//	flatten - (Nested/embedded structs only) Do not prefix the name of the
+//	struct to the names of its fields. This overrides any explicit name on
+//	an embedded struct which would otherwise unflatten it.
 //
-//
-// Extended Usage
+// # Extended Usage
 //
 // Usage lines can frequently be longer than what comfortably fits in a flag
 // tag on a single line. To keep line lengths shorter, use any number of blank
 // identifier fields of any type with a `use` field tag to extend the usage of
 // a flag. Each `use` tag is joined with a single space.
 //
-//      type Flags struct {
-//              URL string   `flag:"url;;Usage starts here"`
-//              _   struct{} `use:"and continues here"`
-//              _   struct{} `use:"and ends here."`
-//      }
+//	type Flags struct {
+//	        URL string   `flag:"url;;Usage starts here"`
+//	        _   struct{} `use:"and continues here"`
+//	        _   struct{} `use:"and ends here."`
+//	}
 //
-//
-// Auto-Adapt flag.Value To pflag.Value
+// # Auto-Adapt flag.Value To pflag.Value
 //
 // The pflag.Value interface is the flag.Value interface, but with an
 // additional Type() string function. This means that flag.Value cannot be used
@@ -237,7 +227,6 @@ type Binder interface {
 // uses the underlying type name as the Type() string. This allows you to only
 // need to implement flag.Value. If the field does implement pflag.Value, it is
 // used directly.
-//
 //
 // Nested/Embedded Structs Flag Prefix
 //
@@ -260,8 +249,7 @@ type Binder interface {
 // By default, flags in embedded structs do not given a prefix, but one can be
 // added by setting an explicit Flag Tag <name>.
 //
-//
-// Overriding Flag Settings
+// # Overriding Flag Settings
 //
 // It is not always possible to set a Flag Tag on the fields of a nested struct
 // type, such as when the type is from an external package. To allow for
@@ -280,11 +268,11 @@ type Binder interface {
 // For example, this sets the default value and usage on the flag for Timeout
 // on an embedded http.Client.
 //
-//      type Flags struct {
-//              http.Client // Defines the -timeout flag
-//              _ struct{} `flag:"timeout;5s;HTTP request timeout"`
-//              _ struct{} `use:"... continued usage"`
-//      }
+//	type Flags struct {
+//	        http.Client // Defines the -timeout flag
+//	        _ struct{} `flag:"timeout;5s;HTTP request timeout"`
+//	        _ struct{} `use:"... continued usage"`
+//	}
 func Bind(fs FlagSet, v interface{}, opts ...Option) error {
 	return newBind(opts...).bind(fs, v)
 }
@@ -547,6 +535,24 @@ func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 		val := *p
 		fs.IntVar(p, tag.Name, val, tag.Usage)
 	case *uint:
+		val := *p
+		fs.UintVar(p, tag.Name, val, tag.Usage)
+	case *int8:
+		val := *p
+		fs.IntVar(p, tag.Name, val, tag.Usage)
+	case *uint8:
+		val := *p
+		fs.UintVar(p, tag.Name, val, tag.Usage)
+	case *int16:
+		val := *p
+		fs.IntVar(p, tag.Name, val, tag.Usage)
+	case *uint16:
+		val := *p
+		fs.UintVar(p, tag.Name, val, tag.Usage)
+	case *int32:
+		val := *p
+		fs.IntVar(p, tag.Name, val, tag.Usage)
+	case *uint32:
 		val := *p
 		fs.UintVar(p, tag.Name, val, tag.Usage)
 	case *int64:
