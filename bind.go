@@ -534,8 +534,6 @@ func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 	switch p := p.(type) {
 	case flag.Value:
 		fs.Var(p, tag.Name, tag.Usage)
-	case textBidiMarshaler:
-		fs.Var(&pflagMarshalerValue{p, ""}, tag.Name, tag.Usage)
 	case *json.RawMessage:
 		fs.Var((*JSONRawMessage)(p), tag.Name, tag.Usage)
 	case *url.URL:
@@ -564,6 +562,11 @@ func bindSTDFlag(fs STDFlagSet, tag flagTag, p interface{}) bool {
 	case *string:
 		val := *p
 		fs.StringVar(p, tag.Name, val, tag.Usage)
+	case textBidiMarshaler:
+		// Match the interface after concrete types so that any concrete types that
+		// also implement the interface use the more specific implementation for
+		// their concrete types.
+		fs.Var(&pflagMarshalerValue{p, ""}, tag.Name, tag.Usage)
 	default:
 		return false
 	}
@@ -588,8 +591,6 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 			pp = pflagValue{p, typeName}
 		}
 		f = fs.VarPF(pp, tag.Name, tag.ShortName, tag.Usage)
-	case textBidiMarshaler:
-		fs.VarPF(&pflagMarshalerValue{p, typeName}, tag.Name, tag.ShortName, tag.Usage)
 	case *json.RawMessage:
 		f = fs.VarPF((*JSONRawMessage)(p), tag.Name, tag.ShortName, tag.Usage)
 	case *url.URL:
@@ -651,6 +652,11 @@ func bindPFlag(fs PFlagSet, tag flagTag, p interface{}, typeName string) bool {
 	case *[]string:
 		val := *p
 		fs.StringSliceVarP(p, tag.Name, tag.ShortName, val, tag.Usage)
+	case textBidiMarshaler:
+		// Match the interface after concrete types so that any concrete types that
+		// also implement the interface use the more specific implementation for
+		// their concrete types.
+		fs.VarPF(&pflagMarshalerValue{p, typeName}, tag.Name, tag.ShortName, tag.Usage)
 	default:
 		return false
 	}
