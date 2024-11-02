@@ -38,6 +38,21 @@ func (v *TestValue) Set(text string) error {
 	}
 	return nil
 }
+
 func (v TestValue) String() string {
 	return fmt.Sprint(bool(v))
+}
+
+type TestTextMarshaler struct {
+	v   string
+	err error
+}
+
+func (v *TestTextMarshaler) MarshalText() (text []byte, err error) {
+	return []byte(v.v), v.err
+}
+
+func (v *TestTextMarshaler) UnmarshalText(text []byte) error {
+	v.v = string(text)
+	return v.err
 }
