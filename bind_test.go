@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,7 +113,7 @@ func (test *BindTest) test(t *testing.T) {
 	for _, use := range test.UsageContains {
 		assert.Contains(usage, use, "flag.FlagSet.Usage()")
 	}
-	//fmt.Println(usage)
+	// fmt.Println(usage)
 	if test.UsePFlag {
 		for _, use := range test.UsageNotContains {
 			assert.NotContains(usage, use, "flag.FlagSet.Usage()")
@@ -236,6 +237,56 @@ type StructB struct {
 func TestBind(t *testing.T) {
 	for _, test := range tests {
 		test.Run(t)
+	}
+}
+
+type ValidCobraFlagConfig struct {
+	StringVar string `flag:"string-var,s;default value;my usage;persistent;"`
+}
+
+func TestBindCobra(t *testing.T) {
+	tt := []struct {
+		name      string
+		F         interface{}
+		FName     string
+		FCobraSet string
+		FWant     interface{}
+		Err       error
+	}{
+		{
+			name:      "with persistent flags",
+			F:         &ValidCobraFlagConfig{},
+			FName:     "string-var",
+			FCobraSet: "persistent",
+			FWant:     "default value",
+			Err:       nil,
+		},
+	}
+
+	for _, tt := range tt {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			err := BindCobra(cmd, tt.F)
+			if tt.Err != nil {
+				assert.Equal(t, tt.Err, err)
+			}
+
+			var fs *pflag.FlagSet
+			switch tt.FCobraSet {
+			case "persistent":
+				fs = cmd.PersistentFlags()
+			case "local":
+				fs = cmd.LocalFlags()
+			case "flags":
+				fs = cmd.Flags()
+			default:
+				panic("unsupported cobra FlagSet")
+			}
+
+			got := fs.Lookup(tt.FName)
+			assert.NotNil(t, got)
+			assert.Equal(t, fmt.Sprintf("%v", tt.FWant), got.Value.String())
+		})
 	}
 }
 
